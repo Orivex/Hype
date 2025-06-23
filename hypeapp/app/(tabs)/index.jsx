@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Gauge from '../helper/Gauge';
+import { Colors } from '@/constants/Colors';
 
 const Post = () => {
   const [no, setNo] = useState(0);
@@ -38,7 +39,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   postContainer: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.yellow.base,
     borderWidth: 5,
     borderColor: 'gray',
     borderRadius: 20,
