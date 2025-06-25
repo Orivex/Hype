@@ -5,4 +5,4 @@
 expo-env.d.ts
 # @end expo-cli
 
-FirebaseConfig.ts
+google-services.json
