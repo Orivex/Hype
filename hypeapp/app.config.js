@@ -1,7 +1,3 @@
-
-const AndroidGoogleServicesFile = process.env.GOOGLE_SERVICES_FILE ?? "./google-services.json";
-
-
 export default {
     expo: {
         name: "hype-app",
@@ -16,7 +12,7 @@ export default {
           supportsTablet: true
         },
         android: {
-          googleServicesFile: AndroidGoogleServicesFile,
+          googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? '@/google-services.json',
           adaptiveIcon: {
             foregroundImage: "./assets/images/adaptive-icon.png",
             backgroundColor: "#ffffff"
@@ -31,6 +27,7 @@ export default {
         },
         plugins: [
           "@react-native-firebase/app",
+          "@react-native-firebase/firestore",
           "@react-native-firebase/auth",
           "@react-native-firebase/crashlytics",
           "expo-router",
