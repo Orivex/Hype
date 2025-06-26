@@ -6,36 +6,23 @@ import { useRouter } from 'expo-router';
 export default function SignIn() {
     const router = useRouter();
 
-    const signIn = ({username, email, password}) => {
+    const signIn = ({email, password}) => {
       signInWithEmailAndPassword(getAuth(), email, password)
-        .then((userCredential) => {
-          const user = userCredential.user;
-          console.log('Signed in as: ', user.displayName);
+        .then(() => {
+          setEmail('')
+          setPassword('')
           router.push('/(tabs)')
         })
         .catch((error) => {
-          console.error('Sign in error: ', error.message)
+          console.error('Sign in error: ', error)
         })
-
-      setUsername('')
-      setEmail('')
-      setPassword('')
     }
 
-
-  const [username, setUsername] = useState(''); 
   const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState(''); 
 
   return (
     <SafeAreaView style={styles.container}>
-      <TextInput
-      value={username}
-      onChangeText={setUsername}
-      style={styles.textInput}
-      placeholder='Username'
-      placeholderTextColor={'gray'}
-      />
       <TextInput
       value={email}
       onChangeText={setEmail}
@@ -51,7 +38,7 @@ export default function SignIn() {
       placeholderTextColor={'gray'}
       />
       <View style={{flexDirection: 'row', marginVertical: 10}}>
-        <Button title='Sign in' onPress={()=>{signIn({username, email, password})}} />
+        <Button title='Sign in' onPress={()=>{signIn({email, password})}} />
       </View>
       <Pressable onPress={()=>{router.push('/sign-up')}}>
         <Text style={{color: 'cornflowerblue'}} >Don't have an account? Sign up here!</Text>

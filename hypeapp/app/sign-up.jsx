@@ -21,7 +21,7 @@ export default function SignUp() {
       await setDoc(docRef, user)
     }
     catch(e) {
-      console.error(e);
+      console.error("Adding user didn't work", e);
     }
   }
 
@@ -30,9 +30,14 @@ export default function SignUp() {
     createUserWithEmailAndPassword(getAuth(), email, password)
       .then(async (userCredential) => {
 
-        await addUser(username, userCredential.user.uid);
+        await addUser({username, uid: userCredential.user.uid});
 
         console.log('User account created & signed in!');
+
+        setUsername('');
+        setEmail('');
+        setPassword('');
+
         router.push('/(tabs)');
       })
       .catch(error => {
@@ -44,12 +49,8 @@ export default function SignUp() {
           console.log('That email address is invalid!');
         }
 
-        console.error(error);
+        console.error("Sign up didn't work: ", error);
       });
-
-    setUsername('');
-    setEmail('');
-    setPassword('');
 
   }
 

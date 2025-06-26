@@ -21,11 +21,16 @@ export default function Index() {
 
       const docRef = doc(userRef, user.uid);
       const docSnap = await getDoc(docRef);
-
-      setUsername(docSnap);
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        setUsername(userData.name);
+      }
+      else {
+        console.log("No such document!");
+      }
     }
     catch(e){
-      console.error(e);
+      console.error("Getting user didn't work: ", e);
     }
   }
 
@@ -57,7 +62,7 @@ export default function Index() {
   return (
 
     <SafeAreaView style={{flex:1, justifyContent: 'center', alignItems: 'center'}}>
-        <Text>Welcome, {username} !</Text>
+        <Text>Welcome, {username}!</Text>
         <Post/>
     </SafeAreaView>
 
@@ -73,9 +78,9 @@ const Post = () => {
       <Pressable onPress={()=>{router.push('/create')}}>
     <View style={styles.postContainer}>
         <View style={styles.postContentContainer}>
-          <Text style={{fontSize: 14, color: 'gray'}}>GameMaster69</Text>
-          <Text style={{fontSize: 10}}>Football ⚽</Text>
-          <Text>Was that a foul? Vote to tell me what do you think! BLABLABLABLABLABLABLABLA</Text>
+          <Text style={{fontSize: 14, color: 'gray'}}>ChrisRock60</Text>
+          <Text style={{fontSize: 10}}>Film industry 🎬</Text>
+          <Text>Do you think Will Smith deserves the Oscar? That slap was crazy!</Text>
         </View>
 
         <Gauge no={no} yes={yes}></Gauge>
