@@ -3,19 +3,11 @@ import { StyleSheet, View, Text } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { Colors } from '@/constants/Colors';
+import categories from "./categories"
 
-const data = [
-  { label: 'Item 1', value: '1' },
-  { label: 'Item 2', value: '2' },
-  { label: 'Item 3', value: '3' },
-  { label: 'Item 4', value: '4' },
-  { label: 'Item 5', value: '5' },
-  { label: 'Item 6', value: '6' },
-  { label: 'Item 7', value: '7' },
-  { label: 'Item 8', value: '8' },
-];
-const DropdownComponent = () => {
-  const [value, setValue] = useState(null);
+
+const data = categories;
+const DropdownComponent = ({value, onChange}) => {
   const renderItem = item => {
     return (
       <View style={styles.item}>
@@ -38,9 +30,7 @@ const DropdownComponent = () => {
       placeholder="Select item"
       searchPlaceholder="Search..."
       value={value}
-      onChange={item => {
-        setValue(item.value);
-      }}
+      onChange={item=>onChange(item.value)}
       renderItem={renderItem}
     />
   );
@@ -53,30 +43,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderColor: 'gray',
     borderWidth: 2,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
+    marginVertical: 10,
+    paddingLeft: 10
   },
   item: {
     padding: 17,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
   textItem: {
-    flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     color: 'gray',
   },
   placeholderStyle: {
     fontSize: 20,
-    color: 'gray'
+    color: 'gray',
   },
   selectedTextStyle: {
     fontSize: 20,

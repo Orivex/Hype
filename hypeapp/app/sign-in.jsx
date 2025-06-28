@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { TextInput, Button, SafeAreaView, StyleSheet, View, Pressable, Text } from 'react-native';
+import { TextInput, Button, StyleSheet, View, Pressable, Text } from 'react-native';
 import { getAuth, signInWithCredential, signInWithEmailAndPassword  } from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignIn() {
     const router = useRouter();
@@ -40,8 +41,11 @@ export default function SignIn() {
       <View style={{flexDirection: 'row', marginVertical: 10}}>
         <Button title='Sign in' onPress={()=>{signIn({email, password})}} />
       </View>
-      <Pressable onPress={()=>{router.push('/sign-up')}}>
+      <Pressable style={styles.pressable} onPress={()=>{router.push('/sign-up')}}>
         <Text style={{color: 'cornflowerblue'}} >Don't have an account? Sign up here!</Text>
+      </Pressable>
+      <Pressable style={styles.pressable} onPress={()=>{router.push('/forgot')}}>
+        <Text style={{color: 'cornflowerblue'}} >Forgot password</Text>
       </Pressable>
     </SafeAreaView>
   )
@@ -60,5 +64,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginVertical: 10,
     fontSize: 18
+  },
+  pressable: {
+    marginVertical: 5
   }
 })

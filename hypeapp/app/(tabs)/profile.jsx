@@ -1,6 +1,7 @@
-import { Button, SafeAreaView, StyleSheet } from "react-native";
+import { Button, StyleSheet } from "react-native";
 import { getAuth, signOut } from '@react-native-firebase/auth';
 import { useRouter } from "expo-router";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Profile() {
   const router = useRouter();

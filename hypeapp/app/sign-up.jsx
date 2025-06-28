@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { TextInput, Button, SafeAreaView, StyleSheet, View, Pressable, Text } from 'react-native';
+import { TextInput, Button, StyleSheet, View, Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, doc, getFirestore, setDoc } from '@react-native-firebase/firestore'
 import { getAuth, createUserWithEmailAndPassword } from '@react-native-firebase/auth';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignUp() {
 
