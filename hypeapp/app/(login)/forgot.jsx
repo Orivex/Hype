@@ -8,15 +8,23 @@ export default function ForgotPassword() {
     const router = useRouter();
 
     const sendEmail = (email) => {
+
         sendPasswordResetEmail(getAuth(), email)
         .then(() => {
-            Alert.alert("Email successfully sent!")
-
-            setEmail('')
+            Alert.alert("If this email is registered, a reset link was sent. Check your email spam directory!");
+            setEmail('');
+            router.push('/sign-in');
         })
         .catch((error) => {
-            console.error(error);
-            Alert.alert("Something went wrong")
+
+            if (error.code === 'auth/invalid-email') {
+              Alert.alert('That email address is invalid!');
+            }
+            else {
+              console.error(error);
+              Alert.alert("Something went wrong")
+
+            }
         })
     }
 
@@ -32,7 +40,9 @@ export default function ForgotPassword() {
       placeholderTextColor={'gray'}
       />
       <View style={{flexDirection: 'row', marginVertical: 10}}>
-        <Button title='Send email' onPress={()=>{sendEmail(email)}} />
+        <Button title='Send email' onPress={()=>{
+          sendEmail(email.trim())}}
+          />
       </View>
     </SafeAreaView>
   )

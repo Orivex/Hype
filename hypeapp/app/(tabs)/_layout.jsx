@@ -15,15 +15,11 @@ export default function TabLayout() {
         tabBarInactiveTintColor: Colors.orange.base05,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        //tabBarStyle: Platform.select({
-        //  ios: {
-        //    // Use a transparent background on iOS to show the blur effect
-        //    position: 'absolute',
-        //  },
-        //  default: {},
-        //}),
-      }}>
+        tabBarStyle: {
+          backgroundColor: 'gold'
+        }
+        }}>
+
       <Tabs.Screen
         name="index"
         options={{
@@ -45,6 +41,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <FontAwesome name="user-circle" size={28} color={color}/>,
         }}
       />
+
     </Tabs>
   );
 }

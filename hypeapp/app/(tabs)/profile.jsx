@@ -1,20 +1,14 @@
 import { Button, StyleSheet } from "react-native";
 import { getAuth, signOut } from '@react-native-firebase/auth';
 import { useRouter } from "expo-router";
-import { SafeAreaView } from 'react-native-safe-area-context';
+import Background from "../helper/Background";
 
 export default function Profile() {
   const router = useRouter();
+
   return(
-    <SafeAreaView style={styles.container}>
-      <Button color={'red'} title="Sign out" onPress={()=>{signOut(getAuth()).then(()=>{router.replace('/sign-in')})}}/>
-    </SafeAreaView>
+    <Background>
+      <Button color={'red'} title="Sign out" onPress={()=>{signOut(getAuth()).then(()=>{router.replace('/(login)')})}}/>
+    </Background>
   )
 }
-
-const styles = StyleSheet.create({
-  container:{
-    flex: 1,
-    justifyContent: 'center'
-  }
-})

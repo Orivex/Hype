@@ -5,8 +5,9 @@ import Gauge from '../helper/Gauge';
 import { Colors } from '@/constants/Colors';
 import { getAuth } from '@react-native-firebase/auth';
 import { getFirestore, doc, getDoc, collection, getDocs, query, onSnapshot, where } from '@react-native-firebase/firestore';
-import categories from '../helper/categories';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import categories, { mapCategory } from '../helper/categories';
+import Background from '../helper/Background';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 export default function Index() {
 
@@ -38,11 +39,13 @@ export default function Index() {
 
   const fetchAllPolls = () => {
 
-    const unsub = onSnapshot(pollRef, (querySnapshot) => {
+    const unsub = onSnapshot(pollRef, (docSnap) => {
       const fetchedPolls = [];
-      querySnapshot.forEach((doc) => {
-        fetchedPolls.push({id: doc.id, ...doc.data()});
-        fetchAndCacheUsername(doc.data().uid);
+      docSnap.forEach((doc) => {
+        if(doc.exists()) {
+          fetchedPolls.push({id: doc.id, ...doc.data()});
+          fetchAndCacheUsername(doc.data().uid);
+        }
       });
       setPolls(fetchedPolls);
     });
@@ -58,8 +61,10 @@ export default function Index() {
       if(user) {
         try {
           const docSnap = await getDoc(doc(userRef, user.uid));
-          setHypeScore(docSnap.data().hype_score);
-          setUsername(docSnap.data().name);
+          if(docSnap.exists()) {
+            setHypeScore(docSnap.data().hype_score);
+            setUsername(docSnap.data().name);
+          }
         }
         catch(e){
           console.error("Something went wrong fetching the current user: ", e);
@@ -78,9 +83,7 @@ export default function Index() {
   }, [])
 
   return (
-
-    <ImageBackground source={require("@/assets/images/bg.png")} resizeMode='cover' style={styles.bgImage}>
-    <SafeAreaView style={styles.container}>
+    <Background>
         <Text style={styles.welcomeText}>{username}</Text>
         <Text style={styles.hypescoreText} >Your HYPE score: {hypeScore}</Text>
         
@@ -90,43 +93,57 @@ export default function Index() {
         contentContainerStyle={styles.contentContainer}
         renderItem={({item}) => (
           <View>
-              <Pressable onPress={()=>{router.push('/create')}}>
+              <Pressable onPress={()=>{router.push({
+                pathname: `/vote/${item.id}`,
+                params: item
+              })}}>
                 <View style={styles.postContainer}>
                     <View style={styles.postContentContainer}>
                       <Text style={{fontSize: 14, color: 'gray'}}>{usernames[item.uid]}</Text>
-                      <Text style={{fontSize: 10}}>{categories.find(category => category.value == item.category)?.label ||"Unknown"}</Text>
+                      <Text style={{fontSize: 10}}>{mapCategory(item.category) || "Unknown"}</Text>
                       <Text numberOfLines={4} >{item.title}</Text>
                     </View>
-                    <Gauge no={item.leftVotes} yes={item.rightVotes}></Gauge>
+
+                    <View style={styles.gaugeContainer}>
+                      <Gauge
+                        gaugeWidth={110}
+                        gaugeHeight={80}
+                        gaugeRadius={50}
+                        pointerLength={20}
+                        leftLabel={item.left_label}
+                        rightLabel={item.right_label}
+                        leftVotes={item.left_votes}
+                        rightVotes={item.right_votes}
+                      />
+                      <View style={styles.timeLeft}>
+                        <AntDesign name="clockcircleo" size={20} color="black" />
+                        <Text>01:47 left</Text>
+                      </View>
+                    </View>
+
+
                 </View>
               </Pressable>
             </View>
         )}
         />
-    </SafeAreaView>
-    </ImageBackground>
+    </Background>
 
   )
 
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 10, 
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
   postContainer: {
     backgroundColor: Colors.yellow.base,
     borderWidth: 5,
     borderColor: 'gray',
     borderRadius: 20,
     height: 125,
-    width: '95%',
+    width: '100%',
     justifyContent: 'space-around',
     alignItems: 'center',
-    flexDirection: 'row'
+    flexDirection: 'row',
   },
   postContentContainer: {
     width: 150,
@@ -145,7 +162,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  bgImage: {
-    flex: 1,
-  }
+  gaugeContainer: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: '100%',
+  },
+  timeLeft: {
+    width: 130,
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems:'center',
+    marginBottom: 5
+  },
 });

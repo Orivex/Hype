@@ -6,4 +6,8 @@ const categories = [
   { label: 'News', value: 5 },
 ]
 
+export const mapCategory = (value) => {
+  return (categories.find(cat => cat.value == value)).label;
+}
+
 export default categories

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextInput, Button, StyleSheet, View, Pressable, Text } from 'react-native';
+import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, doc, getFirestore, setDoc } from '@react-native-firebase/firestore'
 import { getAuth, createUserWithEmailAndPassword } from '@react-native-firebase/auth';
@@ -43,14 +43,14 @@ export default function SignUp() {
       })
       .catch(error => {
         if (error.code === 'auth/email-already-in-use') {
-          console.log('That email address is already in use!');
+          Alert.alert('That email address is already in use!');
         }
-
-        if (error.code === 'auth/invalid-email') {
-          console.log('That email address is invalid!');
+        else if (error.code === 'auth/invalid-email') {
+          Alert.alert('That email address is invalid!');
         }
-
-        console.error("Sign up didn't work: ", error);
+        else {
+          Alert.alert("Sign up didn't work: ", error);
+        }
       });
 
   }

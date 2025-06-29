@@ -10,7 +10,7 @@ export default function Index() {
       if (user) {
         router.replace('/(tabs)');
       } else {
-        router.replace('/sign-in');
+        router.replace('/(login)');
       }
     });
 

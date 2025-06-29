@@ -5,83 +5,109 @@ import { collection, doc, getFirestore, setDoc } from "@react-native-firebase/fi
 import { useState } from "react";
 import { getAuth } from "@react-native-firebase/auth";
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
-const BaseTextInput = ({value, setValue, placeholder}) => {
-        return(
-            <TextInput
-            value={value}
-            onChangeText={setValue}
-            placeholder={placeholder}
-            placeholderTextColor='gray'
-            style={styles.textInput}
-            />
-    )
-}
+import Background from "../helper/Background";
 
 
 export default function Create() {
 
     const db = getFirestore();
     const pollRef = collection(db, 'poll');
+    const emptyForm = {
+        title: '',
+        category: 0,
+        leftLabel: '',
+        rightLabel: '',
+        duration: 0
+    }
 
-    const createPoll = async ({uid, title, category, leftLabel, rightLabel }) => { //, duration, available_time}) => {
+    const createPoll = async ({uid}) => {
+
         try {
             const poll = {
                 uid: uid,
-                title: title,
-                category: category,
-                leftLabel: leftLabel,
-                rightLabel: rightLabel,
-                leftVotes: 0,
-                rightVotes: 0,
+                title: form.title,
+                category: form.category,
+                left_label: form.leftLabel,
+                right_label: form.rightLabel,
+                left_votes: 0,
+                right_votes: 0,
                 has_ended: false,
+                duration: form.duration
                 //available_time: available_time
             }
             const docRef = doc(pollRef);
             await setDoc(docRef, poll);
 
-            setTitle('');
-            setCategory('');
-            setLeftLabel('');
-            setRightLabel('');
-            setDuration('');
-            Alert.alert("Poll created!")
+            setForm(emptyForm);
+            Alert.alert("Poll created!");
         }
         catch(error) {
-            console.error("Creating poll didn't work: ", error)
+            console.error("Creating poll didn't work: ", error);
         }
     }
 
-    const [title, setTitle] = useState('');
-    const [category, setCategory] = useState('');
-    const [leftLabel, setLeftLabel] = useState('');
-    const [rightLabel, setRightLabel] = useState('');
-    const [duration, setDuration] = useState(0);
+    const [form, setForm] = useState(emptyForm);
 
     return(
-        <SafeAreaView style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <Background>
 
-            <BaseTextInput value={title} setValue={setTitle} placeholder={'Title'} />
 
-            <DropdownComponent
-            value={category}
-            onChange={setCategory}
+            <TextInput
+                value={form.title}
+                onChangeText={(text) => setForm({...form, title: text})}
+                placeholder='Title'
+                placeholderTextColor='gray'
+                style={styles.textInput}
             />
 
-            <BaseTextInput value={leftLabel} setValue={setLeftLabel} placeholder={'Left side of gauge'} />
-            <BaseTextInput value={rightLabel} setValue={setRightLabel} placeholder={'Right side of gauge'} />
-            <BaseTextInput value={duration} setValue={setDuration} placeholder={'Duration'} />
+            <DropdownComponent
+            value={form.category}
+            onChange={(value) => setForm({ ...form, category: value })}
+            />
+
+            <TextInput
+                value={form.leftLabel}
+                onChangeText={(text) => setForm({...form, leftLabel: text})}
+                placeholder='Left side of gauge'
+                placeholderTextColor='gray'
+                style={styles.textInput}
+            />
+            <TextInput
+                value={form.rightLabel}
+                onChangeText={(text) => setForm({...form, rightLabel: text})}
+                placeholder='Right side of gauge'
+                placeholderTextColor='gray'
+                style={styles.textInput}
+            />
+            <TextInput
+                value={form.duration}
+                onChangeText={(text) => setForm({...form, duration: text})}
+                placeholder='Duration'
+                keyboardType="numeric"
+                placeholderTextColor='gray'
+                style={styles.textInput}
+            />
 
 
             <Button title="Create" onPress={()=>{
                 
                 const uid = getAuth().currentUser.uid;
 
-                createPoll({uid, title, category, leftLabel, rightLabel})
+                if(!form.title.trim() || !form.leftLabel.trim() || !form.rightLabel.trim()) {
+                    Alert.alert("Please fill in all text input fields.");
+                }
+                else if(form.category == 0) {
+                    Alert.alert("Please choose a category.");
+                }
+                else if(form.duration < 1 || form.duration > 30) {
+                    Alert.alert("Duration has to be at least 1min and maximum 30min.");
+                }
+                else {
+                    createPoll({uid});
+                }
                 
-                }} ></Button>
-        </SafeAreaView>
+                }}/>
+        </Background>
     )
 }
 

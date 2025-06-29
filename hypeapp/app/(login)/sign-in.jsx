@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextInput, Button, StyleSheet, View, Pressable, Text } from 'react-native';
+import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert } from 'react-native';
 import { getAuth, signInWithCredential, signInWithEmailAndPassword  } from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,7 +15,12 @@ export default function SignIn() {
           router.push('/(tabs)')
         })
         .catch((error) => {
-          console.error('Sign in error: ', error)
+          if(error.code === 'auth/invalid-credential') {
+            Alert.alert('Email or password is wrong');
+          }
+          else {
+            Alert.alert('Sign in error: ', error)
+          }
         })
     }
 
