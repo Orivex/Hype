@@ -1,10 +1,8 @@
-import { HelloWave } from "@/components/HelloWave";
 import { Alert, Button, StyleSheet, TextInput } from "react-native";
 import DropdownComponent from "../helper/DropdownComponent";
-import { collection, doc, getFirestore, setDoc } from "@react-native-firebase/firestore";
+import { collection, doc, getFirestore, serverTimestamp, setDoc } from "@react-native-firebase/firestore";
 import { useState } from "react";
 import { getAuth } from "@react-native-firebase/auth";
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Background from "../helper/Background";
 
 
@@ -17,7 +15,7 @@ export default function Create() {
         category: 0,
         leftLabel: '',
         rightLabel: '',
-        duration: 0
+        seconds: 0
     }
 
     const createPoll = async ({uid}) => {
@@ -31,8 +29,8 @@ export default function Create() {
                 right_label: form.rightLabel,
                 left_votes: 0,
                 right_votes: 0,
-                has_ended: false,
-                duration: form.duration
+                seconds: form.seconds,
+                start_at: serverTimestamp()
                 //available_time: available_time
             }
             const docRef = doc(pollRef);
@@ -80,9 +78,9 @@ export default function Create() {
                 style={styles.textInput}
             />
             <TextInput
-                value={form.duration}
-                onChangeText={(text) => setForm({...form, duration: text})}
-                placeholder='Duration'
+                value={form.seconds}
+                onChangeText={(text) => setForm({...form, seconds: parseInt(text)})}
+                placeholder='Duration in seconds'
                 keyboardType="numeric"
                 placeholderTextColor='gray'
                 style={styles.textInput}
@@ -99,8 +97,8 @@ export default function Create() {
                 else if(form.category == 0) {
                     Alert.alert("Please choose a category.");
                 }
-                else if(form.duration < 1 || form.duration > 30) {
-                    Alert.alert("Duration has to be at least 1min and maximum 30min.");
+                else if(form.seconds < 1 || form.duration > 1000) {
+                    Alert.alert("Duration has to be at least 60s and maximum 1000sec.");
                 }
                 else {
                     createPoll({uid});

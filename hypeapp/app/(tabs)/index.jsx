@@ -1,23 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Gauge from '../helper/Gauge';
 import { Colors } from '@/constants/Colors';
 import { getAuth } from '@react-native-firebase/auth';
-import { getFirestore, doc, getDoc, collection, getDocs, query, onSnapshot, where } from '@react-native-firebase/firestore';
+import { getFirestore, doc, getDoc, collection, getDocs, query, onSnapshot, where, updateDoc } from '@react-native-firebase/firestore';
 import categories, { mapCategory } from '../helper/categories';
 import Background from '../helper/Background';
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { calculateTimeLeft, estimateServerTimeOffeset, startCountDown } from '../helper/DurationCountDown';
 
 export default function Index() {
 
   const db = getFirestore();
   const userRef = collection(db, 'user');
   const pollRef = collection(db, 'poll');
-  const [usernames, setUsernames] = useState({});
-  const [hypeScore, setHypeScore] = useState(0);
-  const [username, setUsername] = useState('');
+
   const router = useRouter();
+
+  const [usernames, setUsernames] = useState({});
+
+  const [polls, setPolls] = useState([]);
+  const [leftVotes, setLeftVotes] = useState([]);
+  const [rightVotes, setRightVotes] = useState([]);
+
+  const [serverTimeOffset, setServerTimeOffset] = useState(null);
+  const [timeLeft, setTimeLeft] = useState({});
+  const countDownStopFunctions = useRef({});
+
+  const [isLoading, setIstLoading] = useState(true);
 
   const fetchAndCacheUsername = async (uid) => {
     if(usernames[uid]) {
@@ -27,66 +38,123 @@ export default function Index() {
     try {
       const docRef =  doc(userRef, uid);
       const docSnap = await getDoc(docRef);
-      const userData = docSnap.data();
-      setUsernames(prev => ({ ...prev, [uid]: userData.name}));
+      if(docSnap.exists()) {
+        setUsernames(prev => ({ ...prev, [uid]: docSnap.data().name}));
+      }
     }
     catch(e) {
       console.error("Fetching username went wrong: ", e)
     }
   }
 
-  const [polls, setPolls] = useState([]);
-
-  const fetchAllPolls = () => {
-
+  const fetchPollVotes = () => {
     const unsub = onSnapshot(pollRef, (docSnap) => {
-      const fetchedPolls = [];
-      docSnap.forEach((doc) => {
+      const fetchedLeftVotes = [];
+      const fetchedRightVotes = [];
+      docSnap.forEach(async (doc) => {
+        const docData = doc.data();
         if(doc.exists()) {
-          fetchedPolls.push({id: doc.id, ...doc.data()});
-          fetchAndCacheUsername(doc.data().uid);
+          fetchedLeftVotes[doc.id] = docData.left_votes;
+          fetchedRightVotes[doc.id] = docData.right_votes;
         }
-      });
-      setPolls(fetchedPolls);
-    });
+      })
+
+      setLeftVotes(fetchedLeftVotes);
+      setRightVotes(fetchedRightVotes);
+    })
 
     return unsub;
-  };
+  }
+
+  const fetchPollInfo = async () => {
+    try {
+        const docSnap = await getDoc(pollRef);
+        const fetchedPolls = [];
+        docSnap.forEach((doc)=> {
+          if(doc.exists()) {
+              fetchedPolls.push({id: doc.id, ...doc.data()});
+              fetchAndCacheUsername(doc.data().uid)
+          }
+        })
+
+        setPolls(fetchedPolls);
+    }
+    catch(e) {
+        console.error("Error when fetching poll info: ", e);
+    }
+  }
 
   useEffect(()=> {
 
-    const fetchCurrentUser = async () => {
+    let unsub;
 
-      const user = getAuth().currentUser;
-      if(user) {
-        try {
-          const docSnap = await getDoc(doc(userRef, user.uid));
-          if(docSnap.exists()) {
-            setHypeScore(docSnap.data().hype_score);
-            setUsername(docSnap.data().name);
-          }
-        }
-        catch(e){
-          console.error("Something went wrong fetching the current user: ", e);
-        }
+    const loadData = async () => {
+      
+      console.log("loading data");
+
+      try {
+        setServerTimeOffset(await estimateServerTimeOffeset(db));
+        await fetchPollInfo();
+        unsub = fetchPollVotes();
+      }
+      catch(e) {
+        console.error("Error when loading data: ", e);
+      }
+      finally{
+        setIstLoading(false);
       }
 
     }
-    
-    fetchCurrentUser();
 
-    const unsub = fetchAllPolls();
+    loadData();
 
-    console.log(usernames);
-    return () => unsub && unsub();
+    return ()=>{
+      if(unsub) {
+        unsub();
+      }
+    }
 
   }, [])
 
+  useEffect(()=> {
+    console.log("loaded");
+    if(!isLoading && polls.length > 0) {
+
+      Object.values(countDownStopFunctions.current).forEach(stopFn => {
+        if(stopFn) stopFn();
+      });
+
+      countDownStopFunctions.current = {};
+
+      for(let i = 0; i < polls.length; i++) {
+        const pollID = polls[i].id;
+        const stopCountDown = startCountDown(polls[i].start_at, polls[i].seconds, serverTimeOffset, (remaining)=>{
+            setTimeLeft(prev => ({ ...prev, [pollID]: remaining }));
+        })
+
+        countDownStopFunctions.current[pollID] = stopCountDown;
+      }
+
+      return () => {
+        Object.values(countDownStopFunctions.current).forEach(stopFn => {
+          if(stopFn) stopFn();
+        });
+      }
+
+    }
+
+  }, [isLoading])
+
+  if(isLoading) {
+      return(
+          <Background>
+              <ActivityIndicator size='large'/>
+          </Background>
+      )
+  }
+
   return (
     <Background>
-        <Text style={styles.welcomeText}>{username}</Text>
-        <Text style={styles.hypescoreText} >Your HYPE score: {hypeScore}</Text>
-        
         <FlatList
         data={polls}
         keyExtractor={(item) => item.id}
@@ -95,12 +163,12 @@ export default function Index() {
           <View>
               <Pressable onPress={()=>{router.push({
                 pathname: `/vote/${item.id}`,
-                params: item
+                params: {id: item.id}
               })}}>
                 <View style={styles.postContainer}>
                     <View style={styles.postContentContainer}>
                       <Text style={{fontSize: 14, color: 'gray'}}>{usernames[item.uid]}</Text>
-                      <Text style={{fontSize: 10}}>{mapCategory(item.category) || "Unknown"}</Text>
+                      <Text style={{fontSize: 10}}>{mapCategory(item.category)}</Text>
                       <Text numberOfLines={4} >{item.title}</Text>
                     </View>
 
@@ -112,12 +180,12 @@ export default function Index() {
                         pointerLength={20}
                         leftLabel={item.left_label}
                         rightLabel={item.right_label}
-                        leftVotes={item.left_votes}
-                        rightVotes={item.right_votes}
+                        leftVotes={leftVotes[item.id]}
+                        rightVotes={rightVotes[item.id]}
                       />
                       <View style={styles.timeLeft}>
                         <AntDesign name="clockcircleo" size={20} color="black" />
-                        <Text>01:47 left</Text>
+                        <Text>{timeLeft[item.id] != 0 ? timeLeft[item.id]: "Voting closed!"}</Text>
                       </View>
                     </View>
 
@@ -153,10 +221,6 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 25,
     fontStyle: 'italic',
-  },
-  hypescoreText: {
-    fontSize: 14,
-    marginBottom: 20
   },
   contentContainer: {
     justifyContent: 'center',

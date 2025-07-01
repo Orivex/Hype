@@ -7,7 +7,12 @@ const categories = [
 ]
 
 export const mapCategory = (value) => {
-  return (categories.find(cat => cat.value == value)).label;
+  try {
+    return (categories.find(cat => cat.value == value)).label;
+  }
+  catch(e) {
+    console.error("error when mapping category: ", e);
+  }
 }
 
 export default categories
