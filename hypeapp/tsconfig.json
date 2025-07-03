@@ -15,5 +15,5 @@
     "**/*.jsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "app/(tabs)/index.jsx", "FirebaseConfig.js", "app/helper/DurationCountDown.js", "app/helper/DurationCountDown.js", "app/helper/DropdownComponent.jsx", "app/helper/Background.jsx"  ]
+, "app/pollView.jsx", "FirebaseConfig.js", "app/helper/DurationCountDown.js", "app/helper/DurationCountDown.js", "app/helper/DropdownComponent.jsx", "app/helper/Background.jsx"  ]
 }

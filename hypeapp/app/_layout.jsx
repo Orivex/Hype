@@ -13,6 +13,7 @@ export default function RootLayout() {
           <Stack.Screen name="(login)" options={{ headerShown: false }} />
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="vote/[poll_id]" options={{ headerShown: false }} />
+          <Stack.Screen name="vote/pollView" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
       </Stack>
     </View>

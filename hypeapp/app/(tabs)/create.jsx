@@ -36,8 +36,8 @@ export default function Create() {
             const docRef = doc(pollRef);
             await setDoc(docRef, poll);
 
-            setForm(emptyForm);
-            Alert.alert("Poll created!");
+            //setForm(emptyForm);
+            //Alert.alert("Poll created!");
         }
         catch(error) {
             console.error("Creating poll didn't work: ", error);

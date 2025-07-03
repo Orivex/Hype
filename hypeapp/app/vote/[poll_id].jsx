@@ -11,21 +11,19 @@ import { getAuth } from "@react-native-firebase/auth";
 
 export default function Vote() {
     
-    const {id} = useLocalSearchParams();
+    const poll = useLocalSearchParams();
 
     const db = getFirestore();
     const pollRef = collection(db, 'poll');
     const userRef = collection(db, 'user');
-    const docRef = doc(pollRef, id);
+    const docRef = doc(pollRef, poll.id);
 
     //Realtime updates
     const [leftVotes, setLeftVotes] = useState(0); 
     const [rightVotes, setRightVotes] = useState(0);
     const [totalVotes, setTotalVotes] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(0);
-
-    //static poll info. Changes not possible
-    const [poll, setPoll] = useState({});
+    const [timeLeft, setTimeLeft] = useState(null);
+    const [startAt, setStartAt] = useState(null);
     
     const [isLoading, setIsLoading] = useState(true); 
 
@@ -44,18 +42,6 @@ export default function Vote() {
         });
 
         return unsub;
-    }
-
-    const fetchPollInfo = async () => {
-        try {
-            const docSnap = await getDoc(docRef);
-            if(docSnap.exists()) {
-                setPoll({...docSnap.data()})
-            }
-        }
-        catch(e) {
-            console.error("Error when fetching poll info: ", e);
-        }
     }
 
     const gainHype = async (id) => {
@@ -99,6 +85,13 @@ export default function Vote() {
         }
     }
 
+    const fetchStartAt = async () => {
+        const docSnap = await getDoc(doc(pollRef, poll.id));
+        if(docSnap.exists()) {
+            setStartAt(docSnap.data().start_at);
+        }
+    }
+
     useEffect(()=> {
 
         let unsubVotes;
@@ -106,8 +99,7 @@ export default function Vote() {
         const loadData = async () => {
             try {
                 setServerTimeOffset(await estimateServerTimeOffeset(db));
-                await fetchPollInfo();
-
+                await fetchStartAt();
                 unsubVotes = fetchVotes();
             }
             catch(e) {
@@ -128,7 +120,7 @@ export default function Vote() {
     useEffect(()=> {
 
         if(!isLoading) {
-            const stopCountDown = startCountDown(poll.start_at, poll.seconds, serverTimeOffset, (remaining) => {setTimeLeft(remaining)});
+            const stopCountDown = startCountDown(startAt, poll.seconds, serverTimeOffset, (remaining) => {setTimeLeft(remaining)});
             return () => {
                 if(stopCountDown) stopCountDown();
             }
