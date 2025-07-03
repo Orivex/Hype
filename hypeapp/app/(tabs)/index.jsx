@@ -17,7 +17,10 @@ export default function Categories() {
                 style={{width: '90%'}}
                 contentContainerStyle={styles.contentContainer}            
                 renderItem={({item}) => (
-                  <Pressable onPress={()=>{router.push('/vote/pollView')}}>
+                  <Pressable onPress={()=>{router.push({
+                    pathname: '/(pollView)',
+                    params: item
+                  });   console.log("Passed: ", item.value);}}>
                     <View style={styles.categoryContainer} >
                         <ImageBackground style={styles.image} source={item.imagePath}>
                             <Text style={styles.labelText} >{item.label}</Text>

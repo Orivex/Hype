@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Button, FlatList, ImageBackground, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Gauge from '@/app/helper/Gauge';
 import { getFirestore, doc, getDoc, collection, getDocs, query, onSnapshot, where, updateDoc, limit, orderBy, getCountFromServer } from '@react-native-firebase/firestore';
 import categories, { mapCategory } from '@/app/helper/categories';
@@ -8,7 +8,9 @@ import Background from '@/app/helper/Background';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { estimateServerTimeOffeset, startCountDown } from '@/app/helper/DurationCountDown';
 
-export default function PollView() {
+export default function Index() {
+
+  const category = useLocalSearchParams();
 
   const db = getFirestore();
   const userRef = collection(db, 'user');
@@ -72,42 +74,39 @@ export default function PollView() {
         const doc = querySnap.docs[0];
 
         if(!pollIdsRef.current.has(doc.id)) {
-         // console.log(doc.id);
           const data = doc.data();
           fetchedPoll = { id: doc.id, ...data };
           pollIdsRef.current.add(doc.id);
           fetchAndCacheUsername(data.uid);
-        }
-        else {
-          //console.log(doc.id, " DOUBLE");
         }
         
         return fetchedPoll;
 
     }
 
-    let q = query(pollRef, orderBy('__name__'), where('__name__', '>=', randomId), limit(1));
+    let q = query(pollRef, orderBy('__name__'), where('category', '==', parseInt(category.value)), where('__name__', '>=', randomId),  limit(1));
     let fetchedPoll = await tryFetch(q);
 
     if(fetchedPoll == null) {
-      q = query(pollRef, orderBy('__name__'), where('__name__', '>=', ' '), limit(1));
+      let q = query(pollRef, orderBy('__name__'), where('category', '==', parseInt(category.value)), where('__name__', '>=', ' '),  limit(1));
       fetchedPoll = await tryFetch(q);
     }
 
     return fetchedPoll;
   }
 
-  const fetchRandomPolls = async () => {
+  const fetchRandomPolls = async (isRefreshing) => {
     try {
         console.log("New polls loading");
         let fetchedPolls = [];
 
-        //console.log((await getCountFromServer(pollRef)).data().count);
+        
+        if(isRefreshing) {
+          pollIdsRef.current = new Set();
+        }
 
         for(let i = 0; i < 10; i++) {
-          //console.log("Next: ", i);
           const fetchedPoll = await fetchRandomPoll();
-         // console.log("That shit was null: ", fetchedPoll == null)
           if(fetchedPoll) {
             fetchedPolls.push(fetchedPoll);
 
@@ -117,25 +116,14 @@ export default function PollView() {
             })  
               countDownStopFunctions.current[fetchedPoll.id] = stopCountDown;
             }
-
-            //if(fetchedPolls.length >= 3) {
-            //  fetchedPolls = [];
-            //  console.log("RAAAAHH RERENDER");
-            //}
           }
         }
+
+        if(isRefreshing) {
+            setPolls([]);
+        }
+
         setPolls(prev => [...prev, ...fetchedPolls]);
-        
-
-        //fetchedPolls.forEach(poll => {
-        //  if(!countDownStopFunctions.current[poll.id]) {
-        //    const stopCountDown = startCountDown(poll.start_at, poll.seconds, serverTimeOffset, (remaining)=>{
-        //    setTimeLeft(prev => ({ ...prev, [poll.id]: remaining }));
-        //  })  
-        //  countDownStopFunctions.current[poll.id] = stopCountDown;
-        //  }
-        //})
-
       }
       catch(e) {
         console.error("Error when fetching poll info: ", e);
@@ -173,16 +161,17 @@ export default function PollView() {
 
 
   const onRefresh = React.useCallback(async () => {
+    console.log("Reloading because refreshing");
     setRefreshing(true);
-    setPolls([]);
-    pollIdsRef.current = new Set();
-    await fetchRandomPolls();
+    await fetchRandomPolls(true);
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
   }, []);
 
   const onEndReached = async () => {
+
+    console.log("Reloading because end reached");
     //if(polls.length >= 15) {
     //  pollIdsRef.current = new Set();
     //  setPolls([]);
@@ -199,7 +188,7 @@ export default function PollView() {
         setPolls([]);
         pollIdsRef.current = new Set();
       }
-      await fetchRandomPolls(); 
+      await fetchRandomPolls(false); 
     }
     catch(e) {
       console.error("Error when loading polls (onEndreached)", e);
@@ -235,7 +224,7 @@ export default function PollView() {
         renderItem={({item}) => (
           <View>
               <Pressable onPress={()=>{router.push({
-                pathname: `/vote/${item.id}`,
+                pathname: '/vote',
                 params: item
               })}}>
                 <View style={styles.postContainer}>
@@ -245,6 +234,7 @@ export default function PollView() {
                         <Text style={{fontSize: 14, color: 'black'}}> posted in </Text>
                         <Text style={{fontSize: 16, color: 'gray'}}>{mapCategory(item.category)}</Text>
                       </View>
+                      <Text style={{fontSize: 10, color: 'black'}}>ID: {item.id}</Text>
                       <Text numberOfLines={6} style={{fontSize: 20, color: 'black'}} >{item.title}</Text>
                     </View>
 
