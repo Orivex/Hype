@@ -1,12 +1,13 @@
 import { useLocalSearchParams } from "expo-router"
 import Gauge from "../helper/Gauge";
-import Background from "../helper/Background";
-import { ActivityIndicator, Alert, Button, StyleSheet, Text, View } from "react-native";
+import Background from "../helper/backgrounds";
+import { ActivityIndicator, Alert, Button, ImageBackground, StyleSheet, Text, View } from "react-native";
 import { mapCategory } from "../helper/categories";
 import { useEffect, useRef, useState } from "react";
 import { collection, doc, getDoc, getFirestore, increment, onSnapshot, serverTimestamp, setDoc, Timestamp, updateDoc } from "@react-native-firebase/firestore";
-import { estimateServerTimeOffeset, startCountDown } from "../helper/DurationCountDown";
+import { estimateServerTimeOffset, startCountDown } from "../helper/DurationCountDown";
 import { getAuth } from "@react-native-firebase/auth";
+import backgrounds from "../helper/backgrounds";
 
 
 export default function Vote() {
@@ -26,8 +27,6 @@ export default function Vote() {
     const [startAt, setStartAt] = useState(null);
     
     const [isLoading, setIsLoading] = useState(true); 
-
-    const [serverTimeOffset, setServerTimeOffset] = useState(null);
 
     const fetchVotes = () => {
         const unsub = onSnapshot(docRef, (docSnap) => {
@@ -98,7 +97,6 @@ export default function Vote() {
 
         const loadData = async () => {
             try {
-                setServerTimeOffset(await estimateServerTimeOffeset(db));
                 await fetchStartAt();
                 unsubVotes = fetchVotes();
             }
@@ -120,7 +118,7 @@ export default function Vote() {
     useEffect(()=> {
 
         if(!isLoading) {
-            const stopCountDown = startCountDown(startAt, poll.seconds, serverTimeOffset, (remaining) => {setTimeLeft(remaining)});
+            const stopCountDown = startCountDown(startAt, poll.seconds, (remaining) => {setTimeLeft(remaining)});
             return () => {
                 if(stopCountDown) stopCountDown();
             }
@@ -131,15 +129,15 @@ export default function Vote() {
 
     if(isLoading) {
         return(
-            <Background>
+            <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
                 <ActivityIndicator size='large'/>
-            </Background>
+            </ImageBackground>
         )
     }
 
     return(
 
-        <Background>
+        <ImageBackground source={backgrounds.hypeBG} style={{flex: 1}}>
             <View>
                 <Text>Title: {poll.title}</Text>
                 <Text>Category: {mapCategory(poll.category)}</Text>
@@ -190,7 +188,7 @@ export default function Vote() {
             }
 
 
-        </Background>
+        </ImageBackground>
     )
 }
 

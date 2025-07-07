@@ -1,32 +1,49 @@
 import { doc, getDoc, serverTimestamp, setDoc } from "@react-native-firebase/firestore";
 
-export async function estimateServerTimeOffeset (db){
+
+let serverTimeOffset = 0;
+
+export async function estimateServerTimeOffset (db){
     try {
-        const tmpRef = doc(db, "tmp", "serverTimeTest");
-        await setDoc(tmpRef, { serverTime: serverTimestamp()});
-        const docSnap = await getDoc(tmpRef);
-        const serverTime = docSnap.data().serverTime.toMillis();
+        const serverTime = await getServerTimeMillis(db);
         const localTime = Date.now();
-        return (serverTime - localTime);
+        serverTimeOffset = (serverTime - localTime);
     }
     catch(e) {
         console.error("Error when estimating server time offset: ", e);
     }
 }
 
-export function calculateTimeLeft(seconds, startAt, serverTimeOffset) {
-    return (seconds * 1000) - ( (Date.now() + serverTimeOffset) - startAt.toMillis());
+export { serverTimeOffset }
+
+export async function getServerTimeMillis (db) {
+    try {
+        const tmpRef = doc(db, "tmp", "serverTimeTest");
+        await setDoc(tmpRef, { serverTime: serverTimestamp()});
+        const docSnap = await getDoc(tmpRef);
+        const serverTime = docSnap.data().serverTime.toMillis();
+
+        return serverTime;
+    }
+    catch(e) {
+        console.error("Error when get server time stamp: ", e);
+    }
+}
+export function calculateTimeLeft(seconds, startAt) {
+    const remaining = (seconds * 1000) - ( (Date.now() + serverTimeOffset) - startAt);
+    console.log(remaining);
+    return Math.max(remaining, 0);
 }
 
-export function startCountDown(startAt, seconds, serverTimeOffset, callback) {
+export function startCountDown(startAt, seconds, callback) {
+    const endTime = startAt + seconds * 1000;
+
     const interval = setInterval(()=> {
-        const timeLeft = calculateTimeLeft(seconds, startAt, serverTimeOffset)
-        if(timeLeft <= 0) {
+        const remaining = Math.max(endTime - (Date.now() + serverTimeOffset), 0);
+        const remainingSeconds = Math.floor(remaining/1000);
+        callback(remainingSeconds)
+        if(remainingSeconds <= 0) {
             clearInterval(interval);
-            callback(0);
-        }
-        else {
-            callback(Math.floor(timeLeft/1000));
         }
     }, 100);
 

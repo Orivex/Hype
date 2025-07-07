@@ -1,8 +1,10 @@
 import { FlatList, Image, ImageBackground, Pressable, StyleSheet } from "react-native";
 import categories from "../helper/categories";
 import { View, Text } from "react-native";
-import Background from "../helper/Background";
+import Background from "../helper/backgrounds";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import backgrounds from "../helper/backgrounds";
 
 export default function Categories() {
 
@@ -10,7 +12,8 @@ export default function Categories() {
 
     return (
 
-        <Background>
+        <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
+          <SafeAreaView style={{justifyContent: 'center', alignItems: 'center'}}>
             <FlatList 
                 data={categories}
                 keyExtractor={(item) => item.value}
@@ -30,7 +33,9 @@ export default function Categories() {
 
                 )}
             />
-        </Background>
+          </SafeAreaView>
+
+        </ImageBackground>
 
     )
 }

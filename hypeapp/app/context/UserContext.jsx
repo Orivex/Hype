@@ -28,15 +28,15 @@ export const UserProvider = ({children}) => {
     }
 
     const fetchUser = async () => {
-      const currentUser = getAuth().currentUser;
-      if(!currentUser) {
+      const user = getAuth().currentUser;
+      if(!user) {
         return;
       }
 
       try {
-        const docSnap = await getDoc(doc(userRef, currentUser.uid));
+        const docSnap = await getDoc(doc(userRef, user.uid));
         if(docSnap.exists()) {
-          setUser({id: currentUser.uid, ...docSnap.data()});
+          setUser({id: user.uid, email: user.email, ...docSnap.data()});
         }
       }
       catch(e) {

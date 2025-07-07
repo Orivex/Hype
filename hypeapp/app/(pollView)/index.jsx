@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Button, FlatList, ImageBackground, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Gauge from '@/app/helper/Gauge';
-import { getFirestore, doc, getDoc, collection, getDocs, query, onSnapshot, where, updateDoc, limit, orderBy, getCountFromServer } from '@react-native-firebase/firestore';
+import { getFirestore, doc, getDoc, collection, getDocs, query, onSnapshot, where, updateDoc, limit, orderBy, getCountFromServer, startAfter } from '@react-native-firebase/firestore';
 import categories, { mapCategory } from '@/app/helper/categories';
-import Background from '@/app/helper/Background';
 import AntDesign from '@expo/vector-icons/AntDesign';
-import { estimateServerTimeOffeset, startCountDown } from '@/app/helper/DurationCountDown';
+import { getServerTimeMillis, serverTimeOffset, startCountDown } from '@/app/helper/DurationCountDown';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
+import backgrounds from '../helper/backgrounds';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Index() {
 
@@ -24,17 +25,19 @@ export default function Index() {
   const [polls, setPolls] = useState([]);
   const pollIdsRef = useRef(new Set());
 
-  const [serverTimeOffset, setServerTimeOffset] = useState(null);
   const [timeLeft, setTimeLeft] = useState({});
   const timeLeftBuffer = useRef({});
   const isUpdateScheduled = useRef(false);
   const countDownStopFunctions = useRef({});
 
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isLoadingFirstPolls, setIsLoadingFirstPolls] = useState(true);
   const isLoadingPolls = useRef(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
+  const [allPollsLoaded, setAllPollsLoaded] = useState(false);
   const filter = useRef(0);
+  const filterChanged = useRef(true);
+
+  const flatListRef = useRef(null);
 
   const fetchAndCacheUsername = async (uid) => {
     if(usernames[uid]) {
@@ -80,7 +83,6 @@ export default function Index() {
           const data = doc.data();
           fetchedPoll = { id: doc.id, ...data };
           pollIdsRef.current.add(doc.id);
-          fetchAndCacheUsername(data.uid);
         }
         
         return fetchedPoll;
@@ -99,72 +101,143 @@ export default function Index() {
     return fetchedPoll;
   }
 
-  const newestPollIndex = useRef(null);
+  const fetchRandomPolls = async () => {
+    let fetchedPolls = [];
+    for(let i = 0; i < 10; i++) {
+      const fetchedPoll = await fetchRandomPoll();
+      if(fetchedPoll) {
+        fetchedPolls.push(fetchedPoll);
+      }
+    }
+    return fetchedPolls;
+  }
+
+  const lastVisible = useRef(null);
   const fetchNewestPolls = async () => {
     try {
-      if(newestPollIndex.current == null) {
-        return await getDocs(query(pollRef, orderBy('start_at'), limit(10))); 
+      let docSnap;
+      if(isRefreshing || filterChanged.current) {
+        lastVisible.current = null;
+        docSnap = await getDocs(query(pollRef,
+          orderBy('start_at', 'desc'),
+          where('category', '==', parseInt(category.value)),
+          limit(10)));
       }
+      else {
+        docSnap = await getDocs(query(pollRef, orderBy('start_at', 'desc'),
+        where('category', '==', parseInt(category.value)),
+        startAfter(lastVisible.current),
+        limit(10)));
+      }
+
+      if(docSnap.docs.length > 0) {
+        lastVisible.current = docSnap.docs[docSnap.docs.length-1];
+      }
+
+      const fetchedPolls = docSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      return fetchedPolls;
+
     }
     catch(e) {
       console.error("Error when loading newest polls: ", e);
     }
   }
 
-  const batchedSetTimeLeft = (pollId, remaining) => {
-    timeLeftBuffer.current[pollId] = remaining;
+  const fetchVotingClosedPolls = async () => {
+    try {
+      const serverTime = await getServerTimeMillis(db);
+      let docSnap;
 
-    if (isUpdateScheduled.current) return;
+      if(isRefreshing || filterChanged.current) {
+        lastVisible.current = null;
+        docSnap = await getDocs(query(pollRef,
+          orderBy('expires_at', 'desc'),
+          where('category', '==', parseInt(category.value)),
+          where('expires_at', '<=', serverTime),
+          limit(10)));
+      }
+      else {
+        docSnap = await getDocs(query(pollRef,
+          orderBy('expires_at', 'desc'),
+          where('category', '==', parseInt(category.value)),
+          where('expires_at', '<=', serverTime),
+          startAfter(lastVisible.current),
+          limit(10)));
+      }
+      
+      if(docSnap.docs.length > 0) {
+        lastVisible.current = docSnap.docs[docSnap.docs.length-1];
+      }
 
-    isUpdateScheduled.current = true;
+      const fetchedPolls = docSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-    setTimeout(() => {
-      setTimeLeft(prev => ({ ...prev, ...timeLeftBuffer.current }));
+      return fetchedPolls;
 
-      timeLeftBuffer.current = {};
-      isUpdateScheduled.current = false;
-
-    }, 0);
-  }
-
-  const startPollCountDown = (poll) => {
-    if(!countDownStopFunctions.current[poll.id]) {
-      const stopCountDown = startCountDown(poll.start_at, poll.seconds, serverTimeOffset, (remaining)=>{
-      batchedSetTimeLeft(poll.id, remaining);
-    })  
-      countDownStopFunctions.current[poll.id] = stopCountDown;
+    }
+    catch(e) {
+      console.error("Error when loading newest polls: ", e);
     }
   }
 
+  const startPollCountDown = (poll) => {
 
-  const fetchNewPolls = async (refreshing) => {
+    if(countDownStopFunctions.current[poll.id]) return;
+    
+    const stopCountDown = startCountDown(poll.start_at, poll.seconds, (remaining)=>{
+    setTimeLeft(prev => ({...prev, [poll.id]: remaining})); })  
+    countDownStopFunctions.current[poll.id] = stopCountDown;
+  }
+
+
+  const fetchNewPolls = async () => {
     try {
         console.log("New polls loading");
         let fetchedPolls = [];
 
-        if(refreshing) {
+        if(isRefreshing || filterChanged.current) {
           pollIdsRef.current = new Set();
         }
 
         switch(filter.current) {
+
           case 0: // Newest
-            //fetchNewestPolls();
-          break;
+            fetchedPolls = await fetchNewestPolls();
+            break;
+          case 1:
+            fetchedPolls = await fetchVotingClosedPolls();
+            break;
+          case 2: // Random
+            fetchedPolls = await fetchRandomPolls();
+            break;
         }
 
-        for(let i = 0; i < 10; i++) {
-          const fetchedPoll = await fetchRandomPoll();
-          if(fetchedPoll) {
-            fetchedPolls.push(fetchedPoll);
-            startPollCountDown(fetchedPoll);
-          }
-        }
-
-        if(refreshing) {
+        if(isRefreshing || filterChanged.current) {
             setPolls([]);
+            filterChanged.current = false;
         }
 
-        setPolls(prev => [...prev, ...fetchedPolls]);
+        if(fetchedPolls.length == 0) {
+            setAllPollsLoaded(true);
+            console.log("No more polls to load (fetchNewestPolls)");
+        }
+        
+        fetchedPolls.forEach((fetchedPoll) => {
+          fetchAndCacheUsername(fetchedPoll.uid);
+          startPollCountDown(fetchedPoll);
+        })
+
+        if(fetchedPolls.length > 0) {
+          setPolls(prev => [...prev, ...fetchedPolls]);
+          setAllPollsLoaded(false);
+        }
+        
       }
       catch(e) {
         console.error("Error when fetching poll info: ", e);
@@ -172,34 +245,33 @@ export default function Index() {
   }
 
   useEffect(()=> {
-    
-    const loadData = async () => {
-      try {
-        setServerTimeOffset(await estimateServerTimeOffeset(db));
+
+    const loadFirstPolls = async () => {
+      try{
+        await fetchNewPolls();
       }
       catch(e) {
-        console.error("Error when loading data: ", e);
+        console.error("Error when fetching new polls: ", e);
       }
-      finally{
-        setIsLoadingData(false);
+      finally {
+        setIsLoadingFirstPolls(false);
       }
-
     }
 
-    loadData();
-
-  }, [])
-
-  useEffect(()=> {
+    loadFirstPolls();
 
     return () => {
-      Object.values(countDownStopFunctions.current).forEach(stopFn => {
-        if(stopFn) stopFn();
-      });
+      stopAllCountdowns();
     }
 
   }, [])
 
+  const stopAllCountdowns = () => {
+      Object.values(countDownStopFunctions.current).forEach(stopFn => {
+        if (stopFn) stopFn();
+      });
+      countDownStopFunctions.current = {};
+    };
 
   const onRefresh = React.useCallback(async () => {
 
@@ -209,8 +281,10 @@ export default function Index() {
     }
 
     console.log("Reloading because refreshing");
+
+    flatListRef.current.scrollToOffset({ offset: 0, animated: true });
     setIsRefreshing(true);
-    await fetchNewPolls(true);
+    await fetchNewPolls();
     setTimeout(() => {
       setIsRefreshing(false);
     }, 1000);
@@ -218,25 +292,19 @@ export default function Index() {
 
   const onEndReached = async () => {
 
-    //if(polls.length >= 15) {
-      //  pollIdsRef.current = new Set();
-      //  setPolls([]);
-      //}
-      
     if(isLoadingPolls.current || isRefreshing) {
       console.log("OnEndReached() not possible now");
       return;
     }
-      
-    console.log("Reloading because end reached");
-    isLoadingPolls.current = true;
-
+    
     try {
-      if(polls.length >= 20) {
-        setPolls([]);
-        pollIdsRef.current = new Set();
-      }
-      await fetchNewPolls(false); 
+      //if(polls.length >= 20) {
+        //  setPolls([]);
+        //  pollIdsRef.current = new Set();
+        //}
+      console.log("Reloading because end reached");
+      isLoadingPolls.current = true;
+      await fetchNewPolls(); 
     }
     catch(e) {
       console.error("Error when loading polls (onEndreached)", e);
@@ -247,86 +315,98 @@ export default function Index() {
 
   }
 
-  if(isLoadingData) {
+  if(isLoadingFirstPolls) {
       return(
-          <Background>
+        <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
               <ActivityIndicator size='large'/>
-          </Background>
+          </ImageBackground>
       )
   }
 
 
   return (
-    <Background>
+    <ImageBackground source={backgrounds.hypeBG} style={{flex: 1}}>
 
-      <View style={styles.sortingBar}>
+      <SafeAreaView style={{flex: 1}}>
+        <View style={styles.sortingBar}>
 
-        <SegmentedControl
-          values={['Newest', 'Voting closed', 'Random']}
-          selectedIndex={filter.current}
-          onChange={(event) => {
-            filter.current = event.nativeEvent.selectedSegmentIndex;
-            onRefresh();
-          }}
-          enabled={!isRefreshing}
+          <SegmentedControl
+            values={['Newest', 'Voting closed', 'Random']}
+            selectedIndex={filter.current}
+            onChange={(event) => {
+              filter.current = event.nativeEvent.selectedSegmentIndex;
+              filterChanged.current = true;
+              onRefresh();
+            }}
+            enabled={!isRefreshing}
+          />
+        </View>
+
+        <FlatList
+        ref={flatListRef}
+        data={polls}
+        style={{flex: 1}}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          //isLoadingPolls.current
+          //? 
+          //<ActivityIndicator size='large'/>
+          //: 
+          <Button title={allPollsLoaded ? "Refresh page": "Load more"} onPress={async ()=>{
+            console.log("Load more Button triggered"); 
+            if(allPollsLoaded) {
+              await onRefresh();
+            }
+            else {
+              await onEndReached()
+            }
+          }}/>
+        }
+        renderItem={({item}) => (
+          <View>
+              <Pressable onPress={()=>{router.push({
+                pathname: '/vote',
+                params: item
+              })}}>
+                <View style={styles.postContainer}>
+                    <View style={styles.postContentContainer}>
+                      <View style={{flexDirection: 'row'}}>
+                        <Text style={{fontSize: 16, color: 'gray', fontWeight: 'bold'}}>{usernames[item.uid]}</Text>
+                        <Text style={{fontSize: 14, color: 'black'}}> posted in </Text>
+                        <Text style={{fontSize: 16, color: 'gray'}}>{mapCategory(item.category)}</Text>
+                      </View>
+                      <Text style={{fontSize: 10, color: 'black'}}>ID: {item.id}</Text>
+                      <Text numberOfLines={6} style={{fontSize: 20, color: 'black'}} >{item.title}</Text>
+                    </View>
+                    <View style={styles.gaugeContainer}>
+                      <Gauge
+                        gaugeWidth={120}
+                        gaugeHeight={170}
+                        gaugeRadius={50}
+                        pointerLength={20}
+                        leftLabel={item.left_label}
+                        rightLabel={item.right_label}
+                        leftVotes={item.left_votes}
+                        rightVotes={item.right_votes}
+                      />
+                      <View style={styles.timeLeft}>
+                        <AntDesign name="clockcircleo" size={20} color="black" />
+                        <Text>{timeLeft[item.id] != 0 ? timeLeft[item.id]: "Voting closed!"}</Text>
+                      </View>
+                    </View>
+                </View>
+              </Pressable>
+            </View>
+        )}
         />
-      </View>
-
-      <FlatList
-      data={polls}
-      style={{flex: 1}}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={styles.contentContainer}
-      refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
-      }
-      onEndReached={async ()=>{await onEndReached()}}
-      onEndReachedThreshold={0.5}
-      ListFooterComponent={
-        isLoadingPolls.current
-        ? 
-        <ActivityIndicator size='large'/>
-        : 
-        <Button title='Load more' onPress={async ()=>{console.log("Load more Button triggered"); await onEndReached()}}/>
-      }
-      renderItem={({item}) => (
-        <View>
-            <Pressable onPress={()=>{router.push({
-              pathname: '/vote',
-              params: item
-            })}}>
-              <View style={styles.postContainer}>
-                  <View style={styles.postContentContainer}>
-                    <View style={{flexDirection: 'row'}}>
-                      <Text style={{fontSize: 16, color: 'gray', fontWeight: 'bold'}}>{usernames[item.uid]}</Text>
-                      <Text style={{fontSize: 14, color: 'black'}}> posted in </Text>
-                      <Text style={{fontSize: 16, color: 'gray'}}>{mapCategory(item.category)}</Text>
-                    </View>
-                    <Text style={{fontSize: 10, color: 'black'}}>ID: {item.id}</Text>
-                    <Text numberOfLines={6} style={{fontSize: 20, color: 'black'}} >{item.title}</Text>
-                  </View>
-                  <View style={styles.gaugeContainer}>
-                    <Gauge
-                      gaugeWidth={120}
-                      gaugeHeight={170}
-                      gaugeRadius={50}
-                      pointerLength={20}
-                      leftLabel={item.left_label}
-                      rightLabel={item.right_label}
-                      leftVotes={item.left_votes}
-                      rightVotes={item.right_votes}
-                    />
-                    <View style={styles.timeLeft}>
-                      <AntDesign name="clockcircleo" size={20} color="black" />
-                      <Text>{timeLeft[item.id] != 0 ? timeLeft[item.id]: "Voting closed!"}</Text>
-                    </View>
-                  </View>
-              </View>
-            </Pressable>
-          </View>
-      )}
-      />
-    </Background>
+      </SafeAreaView>
+    </ImageBackground>
 
     
 

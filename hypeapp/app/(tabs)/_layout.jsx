@@ -1,25 +1,48 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HapticTab } from '@/components/HapticTab';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { UserProvider } from '../context/UserContext';
+import { estimateServerTimeOffset } from '../helper/DurationCountDown';
+import { getFirestore } from '@react-native-firebase/firestore';
+import colors from '../helper/colors';
 
 export default function TabLayout() {
+
+  useEffect(()=> {
+
+    const db = getFirestore();
+
+    const loadData = async () => {
+      try {
+        await estimateServerTimeOffset(db);
+      }
+      catch(e) {
+        console.error("Error when estimating serverTimeOffset: ", e);
+      }
+      finally {
+        console.log("Happened");
+      }
+    }
+
+    loadData();
+  
+  }, [])
 
   return (
 
     <UserProvider>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors.orange.base,
-          tabBarInactiveTintColor: Colors.orange.base05,
+          tabBarActiveTintColor: colors.orange,
+          tabBarInactiveTintColor: colors.orange05,
           headerShown: false,
           tabBarButton: HapticTab,
           tabBarStyle: {
-            backgroundColor: 'gold'
+            backgroundColor: colors.yellow
           }
           }}>
 
