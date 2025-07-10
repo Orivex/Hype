@@ -17,7 +17,10 @@ export const UserProvider = ({children}) => {
     const [isLoadingUser, setIsLoadingUser] = useState(true);
 
     const fetchHypeScore = () => {
-      const docRef = doc(userRef, user.id);
+
+      if(!user) return;
+
+      const docRef = doc(userRef, user.uid);
       const unsub = onSnapshot(docRef, (docSnap) => {
         if(docSnap.exists()) {
           setHypeScore(docSnap.data().hype_score);
@@ -29,14 +32,13 @@ export const UserProvider = ({children}) => {
 
     const fetchUser = async () => {
       const user = getAuth().currentUser;
-      if(!user) {
-        return;
-      }
+      
+      if(!user) return;
 
       try {
         const docSnap = await getDoc(doc(userRef, user.uid));
         if(docSnap.exists()) {
-          setUser({id: user.uid, email: user.email, ...docSnap.data()});
+          setUser({uid: user.uid, email: user.email, displayName: user.displayName, ...docSnap.data()});
         }
       }
       catch(e) {

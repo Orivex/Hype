@@ -1,5 +1,6 @@
 import { StyleSheet, View, Text } from "react-native";
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
+import colors from "./colors";
 
 const Gauge = ({ preview=true, leftLabel, rightLabel, leftVotes, rightVotes, gaugeWidth, gaugeHeight, gaugeRadius, pointerLength}) => {
   const width = gaugeWidth;
@@ -23,8 +24,8 @@ const Gauge = ({ preview=true, leftLabel, rightLabel, leftVotes, rightVotes, gau
               M ${centerX - radius} ${centerY}
               A ${radius} ${radius} 0 0 1 ${centerX + radius} ${centerY}
             `}
-            fill="rgba(0,0,0,0.05)"
-            stroke="red"
+            fill="rgba(0,0,0,0.04)"
+            stroke={colors.red1}
             strokeWidth={10}
           />
 
@@ -51,7 +52,7 @@ const Gauge = ({ preview=true, leftLabel, rightLabel, leftVotes, rightVotes, gau
             y1={centerY}
             x2={pointerX}
             y2={pointerY}
-            stroke="red"
+            stroke={colors.red2}
             strokeWidth={4}
           />
           <Circle cx={centerX} cy={centerY} r={5} fill="#ccc" />

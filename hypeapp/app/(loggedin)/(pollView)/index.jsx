@@ -7,139 +7,82 @@ import categories, { mapCategory } from '@/app/helper/categories';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { getServerTimeMillis, serverTimeOffset, startCountDown } from '@/app/helper/DurationCountDown';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
-import backgrounds from '../helper/backgrounds';
+import backgrounds from '../../helper/backgrounds';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import colors from '@/app/helper/colors';
+import { useUser } from '@/app/context/UserContext';
+import { timeToString } from '@/app/helper/timeToString'
 
 export default function Index() {
 
-  const category = useLocalSearchParams();
+  const {category, isUserPolls, isSavedPolls} = useLocalSearchParams();
 
   const db = getFirestore();
-  const userRef = collection(db, 'user');
-  const pollRef = collection(db, 'poll');
 
   const router = useRouter();
-
-  const [usernames, setUsernames] = useState({});
+  const {user} = useUser();
 
   const [polls, setPolls] = useState([]);
   const pollIdsRef = useRef(new Set());
 
   const [timeLeft, setTimeLeft] = useState({});
-  const timeLeftBuffer = useRef({});
-  const isUpdateScheduled = useRef(false);
   const countDownStopFunctions = useRef({});
 
   const [isLoadingFirstPolls, setIsLoadingFirstPolls] = useState(true);
   const isLoadingPolls = useRef(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [allPollsLoaded, setAllPollsLoaded] = useState(false);
+
   const filter = useRef(0);
   const filterChanged = useRef(true);
 
+  const lastVisible = useRef(null);
+
   const flatListRef = useRef(null);
 
-  const fetchAndCacheUsername = async (uid) => {
-    if(usernames[uid]) {
-      return;
+  const checkRef = () => {
+    if(isSavedPolls == 'true') {
+      return collection(db, 'user', user.uid, 'saved_polls');
     }
 
-    try {
-      const docRef =  doc(userRef, uid);
-      const docSnap = await getDoc(docRef);
-      if(docSnap.exists()) {
-        setUsernames(prev => ({ ...prev, [uid]: docSnap.data().name}));
-      }
-    }
-    catch(e) {
-      console.error("Fetching username went wrong: ", e)
-    }
+    return collection(db, 'poll'); // Default poll reference
   }
 
-  const generateRandomAutoId = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let autoId = '';
-    for (let i = 0; i < 20; i++) {
-      autoId += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return autoId;
-  };
+  const checkAdditionalQuery = (q) => {
 
-  const fetchRandomPoll = async () => {
-    const randomId = generateRandomAutoId();
-    
-    const tryFetch = async (queryRef) => {
-      
-        let fetchedPoll = null;
-
-        const querySnap = await getDocs(queryRef);
-        if(querySnap.empty) {
-          return fetchedPoll;
-        }
-
-        const doc = querySnap.docs[0];
-
-        if(!pollIdsRef.current.has(doc.id)) {
-          const data = doc.data();
-          fetchedPoll = { id: doc.id, ...data };
-          pollIdsRef.current.add(doc.id);
-        }
-        
-        return fetchedPoll;
-
+    if(lastVisible.current) {
+      q = query(q, startAfter(lastVisible.current));
     }
 
-    let q = query(pollRef, orderBy('__name__'), where('category', '==', parseInt(category.value)), where('__name__', '>=', randomId),  limit(1));
-    let fetchedPoll = await tryFetch(q);
-
-    //Fallback
-    if(fetchedPoll == null) {
-      let q = query(pollRef, orderBy('__name__'), where('category', '==', parseInt(category.value)), where('__name__', '>=', ' '),  limit(1));
-      fetchedPoll = await tryFetch(q);
+    if(isUserPolls == 'true') {
+      q = query(q, where('username', '==', user.displayName));
     }
 
-    return fetchedPoll;
+    if(category) {
+      q = query(q, where('category', '==', parseInt(category)));
+    }
+
+    return q;
   }
 
-  const fetchRandomPolls = async () => {
-    let fetchedPolls = [];
-    for(let i = 0; i < 10; i++) {
-      const fetchedPoll = await fetchRandomPoll();
-      if(fetchedPoll) {
-        fetchedPolls.push(fetchedPoll);
-      }
-    }
-    return fetchedPolls;
-  }
-
-  const lastVisible = useRef(null);
   const fetchNewestPolls = async () => {
     try {
+      let q;
       let docSnap;
-      if(isRefreshing || filterChanged.current) {
-        lastVisible.current = null;
-        docSnap = await getDocs(query(pollRef,
-          orderBy('start_at', 'desc'),
-          where('category', '==', parseInt(category.value)),
-          limit(10)));
-      }
-      else {
-        docSnap = await getDocs(query(pollRef, orderBy('start_at', 'desc'),
-        where('category', '==', parseInt(category.value)),
-        startAfter(lastVisible.current),
-        limit(10)));
-      }
+
+      q = query(checkRef(),
+        orderBy('start_at', 'desc'),
+        limit(10));
+
+      q = checkAdditionalQuery(q);
+
+      docSnap = await getDocs(q);
 
       if(docSnap.docs.length > 0) {
         lastVisible.current = docSnap.docs[docSnap.docs.length-1];
       }
 
-      const fetchedPolls = docSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      return fetchedPolls;
+      return docSnap.docs;
 
     }
     catch(e) {
@@ -150,35 +93,24 @@ export default function Index() {
   const fetchVotingClosedPolls = async () => {
     try {
       const serverTime = await getServerTimeMillis(db);
+
+      let q;
       let docSnap;
 
-      if(isRefreshing || filterChanged.current) {
-        lastVisible.current = null;
-        docSnap = await getDocs(query(pollRef,
-          orderBy('expires_at', 'desc'),
-          where('category', '==', parseInt(category.value)),
-          where('expires_at', '<=', serverTime),
-          limit(10)));
-      }
-      else {
-        docSnap = await getDocs(query(pollRef,
-          orderBy('expires_at', 'desc'),
-          where('category', '==', parseInt(category.value)),
-          where('expires_at', '<=', serverTime),
-          startAfter(lastVisible.current),
-          limit(10)));
-      }
+      q = query(checkRef(),
+        orderBy('expires_at', 'desc'),
+        where('expires_at', '<=', serverTime),
+        limit(10));
+
+      q = checkAdditionalQuery(q);
+
+      docSnap = await getDocs(q);
       
       if(docSnap.docs.length > 0) {
         lastVisible.current = docSnap.docs[docSnap.docs.length-1];
       }
 
-      const fetchedPolls = docSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      return fetchedPolls;
+      return docSnap.docs;
 
     }
     catch(e) {
@@ -195,41 +127,47 @@ export default function Index() {
     countDownStopFunctions.current[poll.id] = stopCountDown;
   }
 
-
-  const fetchNewPolls = async () => {
+  const fetchNewPolls = async (isRefresh) => {
     try {
         console.log("New polls loading");
-        let fetchedPolls = [];
+        let docs = [];
 
-        if(isRefreshing || filterChanged.current) {
+        if(isRefresh || filterChanged.current) {
           pollIdsRef.current = new Set();
+          lastVisible.current = null;
         }
 
         switch(filter.current) {
 
-          case 0: // Newest
-            fetchedPolls = await fetchNewestPolls();
-            break;
+          case 0:
+            // HOT
+          break;
           case 1:
-            fetchedPolls = await fetchVotingClosedPolls();
-            break;
-          case 2: // Random
-            fetchedPolls = await fetchRandomPolls();
+            docs = await fetchNewestPolls();
+          break;
+          case 2:
+            docs = await fetchVotingClosedPolls();
             break;
         }
 
-        if(isRefreshing || filterChanged.current) {
+        if(isRefresh || filterChanged.current) {
             setPolls([]);
             filterChanged.current = false;
         }
 
-        if(fetchedPolls.length == 0) {
+        if(docs.length == 0) {
             setAllPollsLoaded(true);
             console.log("No more polls to load (fetchNewestPolls)");
         }
+
+        
+        const fetchedPolls = docs.map(doc => ({
+          id: doc.id,
+          postedAgo: timeToString( (Date.now() + serverTimeOffset) - doc.data().start_at ),
+          ...doc.data()
+        }))
         
         fetchedPolls.forEach((fetchedPoll) => {
-          fetchAndCacheUsername(fetchedPoll.uid);
           startPollCountDown(fetchedPoll);
         })
 
@@ -248,7 +186,7 @@ export default function Index() {
 
     const loadFirstPolls = async () => {
       try{
-        await fetchNewPolls();
+        await fetchNewPolls(false);
       }
       catch(e) {
         console.error("Error when fetching new polls: ", e);
@@ -284,7 +222,7 @@ export default function Index() {
 
     flatListRef.current.scrollToOffset({ offset: 0, animated: true });
     setIsRefreshing(true);
-    await fetchNewPolls();
+    await fetchNewPolls(true);
     setTimeout(() => {
       setIsRefreshing(false);
     }, 1000);
@@ -304,7 +242,7 @@ export default function Index() {
         //}
       console.log("Reloading because end reached");
       isLoadingPolls.current = true;
-      await fetchNewPolls(); 
+      await fetchNewPolls(false); 
     }
     catch(e) {
       console.error("Error when loading polls (onEndreached)", e);
@@ -317,9 +255,9 @@ export default function Index() {
 
   if(isLoadingFirstPolls) {
       return(
-        <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
-              <ActivityIndicator size='large'/>
-          </ImageBackground>
+        <ImageBackground source={backgrounds.hypeBG} style={{flex: 1, justifyContent: 'center'}}>
+            <ActivityIndicator size='large'/>
+        </ImageBackground>
       )
   }
 
@@ -331,8 +269,10 @@ export default function Index() {
         <View style={styles.sortingBar}>
 
           <SegmentedControl
-            values={['Newest', 'Voting closed', 'Random']}
+            values={['Hot', 'Newest', 'Voting closed']}
             selectedIndex={filter.current}
+            tintColor={colors.orange}
+            backgroundColor={colors.red1}
             onChange={(event) => {
               filter.current = event.nativeEvent.selectedSegmentIndex;
               filterChanged.current = true;
@@ -347,7 +287,6 @@ export default function Index() {
         data={polls}
         style={{flex: 1}}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.contentContainer}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
@@ -369,26 +308,28 @@ export default function Index() {
           }}/>
         }
         renderItem={({item}) => (
-          <View>
+          <View style={styles.postContainer}>
               <Pressable onPress={()=>{router.push({
-                pathname: '/vote',
+                pathname: '/(pollView)/vote',
                 params: item
               })}}>
-                <View style={styles.postContainer}>
-                    <View style={styles.postContentContainer}>
+                <View style={styles.postContentContainer}>
+                    <View style={styles.userInfoContainer}>
                       <View style={{flexDirection: 'row'}}>
-                        <Text style={{fontSize: 16, color: 'gray', fontWeight: 'bold'}}>{usernames[item.uid]}</Text>
+                        <Text style={{fontSize: 16, color: colors.red1, fontWeight: 'bold'}}>{item.username}</Text>
                         <Text style={{fontSize: 14, color: 'black'}}> posted in </Text>
-                        <Text style={{fontSize: 16, color: 'gray'}}>{mapCategory(item.category)}</Text>
+                        <Text style={{fontSize: 16, color: colors.red2}}>{mapCategory(item.category)}</Text>
                       </View>
-                      <Text style={{fontSize: 10, color: 'black'}}>ID: {item.id}</Text>
+                      <Text style={{fontSize: 11, color: 'black'}}>{item.postedAgo} ago</Text>
+                    </View>
+                    <View style={styles.textContainer} >
                       <Text numberOfLines={6} style={{fontSize: 20, color: 'black'}} >{item.title}</Text>
                     </View>
                     <View style={styles.gaugeContainer}>
                       <Gauge
-                        gaugeWidth={120}
-                        gaugeHeight={170}
-                        gaugeRadius={50}
+                        gaugeWidth={130}
+                        gaugeHeight={80}
+                        gaugeRadius={60}
                         pointerLength={20}
                         leftLabel={item.left_label}
                         rightLabel={item.right_label}
@@ -397,7 +338,7 @@ export default function Index() {
                       />
                       <View style={styles.timeLeft}>
                         <AntDesign name="clockcircleo" size={20} color="black" />
-                        <Text>{timeLeft[item.id] != 0 ? timeLeft[item.id]: "Voting closed!"}</Text>
+                        <Text style={{textAlignVertical: 'center',fontSize: 18, color: 'black'}}>{timeLeft[item.id] != 0 ? timeLeft[item.id]: "Voting closed!"}</Text>
                       </View>
                     </View>
                 </View>
@@ -419,40 +360,54 @@ const styles = StyleSheet.create({
     marginTop: 60,
     height: 80,
     width: '100%',
-    backgroundColor: 'white',
+    backgroundColor: colors.yellow,
     padding: 20
   },
   postContainer: {
     backgroundColor: 'rgba(255,0,0,0.1)',
     borderBottomWidth: 1,
     borderColor: 'gray',
-    height: 300,
+    height: 400,
     width: '100%',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     alignItems: 'center',
-    flexDirection: 'row',
+    //backgroundColor: 'green',
   },
   postContentContainer: {
-    //backgroundColor: 'green',
-    padding: 20,
-    height: '100%',
-    width: '60%'
+    justifyContent: 'space-between',
+    //backgroundColor: 'yellow',
   },
-  contentContainer: {
-    
+  userInfoContainer: {
+    padding: 10,
+    width: '100%',
+    height: 75,
+    justifyContent: 'center'
+    //backgroundColor: 'green',
+  },
+  textContainer: {
+    padding: 20,
+    height: 200,
+    borderWidth: 2,
+    borderRadius: 10,
+    borderColor: colors.orange,
+    width: '95%',
+    alignSelf: 'center'
+    //backgroundColor: 'pink',
   },
   gaugeContainer: {
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
-  //  backgroundColor: 'white',
-    height: '100%',
-    padding: 5
+    width: '100%',
+    padding: 5,
+    flexDirection: 'row',
+    marginTop: 15,
+    //backgroundColor: 'white',
   },
   timeLeft: {
-    width: 130,
+    width: 160,
+    height: 75,
     flexDirection: 'row',
     justifyContent: 'space-evenly',
     alignItems:'center',
-    marginTop: 10
   }
 });

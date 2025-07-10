@@ -22,7 +22,6 @@ export async function getServerTimeMillis (db) {
         await setDoc(tmpRef, { serverTime: serverTimestamp()});
         const docSnap = await getDoc(tmpRef);
         const serverTime = docSnap.data().serverTime.toMillis();
-
         return serverTime;
     }
     catch(e) {

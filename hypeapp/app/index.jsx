@@ -8,7 +8,7 @@ export default function Index() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getAuth(), (user) => {
       if (user) {
-        router.replace('/(tabs)');
+        router.replace('/(loggedin)/(tabs)/explore');
       } else {
         router.replace('/(login)');
       }

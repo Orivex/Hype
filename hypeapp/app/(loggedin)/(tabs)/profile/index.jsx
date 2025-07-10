@@ -2,13 +2,12 @@ import { ActivityIndicator, Button, ImageBackground, Pressable, StyleSheet } fro
 import { getAuth, signOut } from '@react-native-firebase/auth';
 import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
-import { useUser } from "../context/UserContext";
+import { useUser } from "@/app/context/UserContext";
 import AntDesign from '@expo/vector-icons/AntDesign';
-import backgrounds from "../helper/backgrounds";
-import colors from "../helper/colors";
+import backgrounds from "@/app/helper/backgrounds";
+import colors from "@/app/helper/colors";
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Entypo from '@expo/vector-icons/Entypo';
 
 
@@ -18,8 +17,8 @@ export default function Profile() {
 
   if(isLoadingUser) {
       return(
-        <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
-              <ActivityIndicator size='large'/>
+        <ImageBackground source={backgrounds.baseBG} style={{flex: 1, justifyContent: 'center'}}>
+            <ActivityIndicator size='large'/>
         </ImageBackground>
       )
   }
@@ -52,9 +51,26 @@ export default function Profile() {
           <Text style={styles.hypeScoreText} >🔥{hypeScore}🔥</Text>
         </View>
         <View style={styles.menuContainer}>
-          {menuElement('My polls', <Entypo name="gauge" size={24} color={colors.red1} />, ()=>{console.log('my')})}
+          {menuElement('My polls', <Entypo name="gauge" size={24} color={colors.red1} />, ()=>{
+            router.push({
+              pathname: '/(pollView)',
+              params: {
+                category: null,
+                isUserPolls: true,
+                isSavedPolls: false
+              }
+            })})}
           {seperatorComponent}
-          {menuElement('Saved polls', <AntDesign name="staro" size={26} color={colors.red1} />, ()=>{console.log('saved')})}
+          {menuElement('Saved polls', <AntDesign name="staro" size={26} color={colors.red1} />, ()=>{
+            router.push({
+              pathname: '/(pollView)',
+              params: {
+                category: null,
+                isUserPolls: false,
+                isSavedPolls: true
+              }
+            })
+          })}
           {seperatorComponent}
           {menuElement('Log out', <SimpleLineIcons name="logout" size={24} color={colors.red1} />, ()=>{signOut(getAuth()).then(()=>{router.replace('/(login)')})})}
         </View>

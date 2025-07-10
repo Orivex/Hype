@@ -12,7 +12,7 @@ export default function SignIn() {
         .then(() => {
           setEmail('')
           setPassword('')
-          router.push('/(tabs)')
+          router.push('/(loggedin)/(tabs)/explore')
         })
         .catch((error) => {
           if(error.code === 'auth/invalid-credential') {

@@ -1,10 +1,9 @@
 import { FlatList, Image, ImageBackground, Pressable, StyleSheet } from "react-native";
-import categories from "../helper/categories";
 import { View, Text } from "react-native";
-import Background from "../helper/backgrounds";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import backgrounds from "../helper/backgrounds";
+import backgrounds from "@/app/helper/backgrounds";
+import categories from "@/app/helper/categories";
 
 export default function Categories() {
 
@@ -22,8 +21,12 @@ export default function Categories() {
                 renderItem={({item}) => (
                   <Pressable onPress={()=>{router.push({
                     pathname: '/(pollView)',
-                    params: item
-                  });   console.log("Passed: ", item.value);}}>
+                    params: {
+                      category: item.value,
+                      isUserPolls: false,
+                      isSavedPolls: false
+                    }
+                  })}}>
                     <View style={styles.categoryContainer} >
                         <ImageBackground style={styles.image} source={item.imagePath}>
                             <Text style={styles.labelText} >{item.label}</Text>

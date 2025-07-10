@@ -1,17 +1,18 @@
 import { Alert, Button, ImageBackground, StyleSheet, TextInput } from "react-native";
-import DropdownComponent from "../helper/DropdownComponent";
-import { collection, doc, getFirestore, serverTimestamp, setDoc } from "@react-native-firebase/firestore";
+import DropdownComponent from "@/app/helper/DropdownComponent";
+import { collection, doc, getFirestore, setDoc } from "@react-native-firebase/firestore";
 import { useState } from "react";
 import { getAuth } from "@react-native-firebase/auth";
-import Background from "../helper/backgrounds";
-import { getServerTimeMillis } from "../helper/DurationCountDown";
-import backgrounds from "../helper/backgrounds";
+import { getServerTimeMillis } from "@/app/helper/DurationCountDown";
 import { SafeAreaView } from "react-native-safe-area-context";
+import backgrounds from "@/app/helper/backgrounds";
+import { useUser } from "@/app/context/UserContext";
 
 
 export default function Create() {
 
     const db = getFirestore();
+    const {user} = useUser();
     const pollRef = collection(db, 'poll');
     const emptyForm = {
         title: '',
@@ -21,12 +22,12 @@ export default function Create() {
         seconds: 0
     }
 
-    const createPoll = async ({uid}) => {
+    const createPoll = async () => {
 
         try {
             const serverTime = await getServerTimeMillis(db);
             const poll = {
-                uid: uid,
+                username: user.displayName,
                 title: form.title,
                 category: form.category,
                 left_label: form.leftLabel,
@@ -36,7 +37,6 @@ export default function Create() {
                 seconds: form.seconds,
                 start_at: serverTime,
                 expires_at: serverTime + form.seconds * 1000
-                //available_time: available_time
             }
             const docRef = doc(pollRef);
             await setDoc(docRef, poll);
@@ -93,8 +93,6 @@ export default function Create() {
 
                 <Button title="Create" onPress={()=>{
 
-                    const uid = getAuth().currentUser.uid;
-
                     if(!form.title.trim() || !form.leftLabel.trim() || !form.rightLabel.trim()) {
                         Alert.alert("Please fill in all text input fields.");
                     }
@@ -105,7 +103,7 @@ export default function Create() {
                         Alert.alert("Duration has to be at least 60s and maximum 1000sec.");
                     }
                     else {
-                        createPoll({uid});
+                        createPoll();
                     }
 
                     }}/>
