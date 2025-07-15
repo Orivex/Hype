@@ -5,21 +5,21 @@ import categories from "./categories"
 
 
 const data = categories;
-const DropdownComponent = ({value, onChange}) => {
+const DropdownComponent = ({value, onChange, style}) => {
   const renderItem = item => {
     return (
-      <View style={styles.item}>
-        <Text style={styles.textItem}>{item.label}</Text>
+      <View style={style.item}>
+        <Text style={style.textItem}>{item.label}</Text>
       </View>
     );
   };
   return (
     <Dropdown
-      style={styles.dropdown}
-      placeholderStyle={styles.placeholderStyle}
-      selectedTextStyle={styles.selectedTextStyle}
-      inputSearchStyle={styles.inputSearchStyle}
-      iconStyle={styles.iconStyle}
+      style={style}
+      placeholderStyle={style.placeholderStyle}
+      selectedTextStyle={style.selectedTextStyle}
+      inputSearchStyle={style.inputSearchStyle}
+      iconStyle={style.iconStyle}
       data={data}
       search
       maxHeight={300}
@@ -34,35 +34,3 @@ const DropdownComponent = ({value, onChange}) => {
   );
 };
 export default DropdownComponent;
-const styles = StyleSheet.create({
-  dropdown: {
-    height: 50,
-    width: 300,
-    borderRadius: 10,
-    borderColor: 'gray',
-    borderWidth: 2,
-    marginVertical: 10,
-    paddingLeft: 10
-  },
-  item: {
-    padding: 17,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  textItem: {
-    fontSize: 14,
-    color: 'gray',
-  },
-  placeholderStyle: {
-    fontSize: 20,
-    color: 'gray',
-  },
-  selectedTextStyle: {
-    fontSize: 20,
-    color: 'gray',
-  },
-  inputSearchStyle: {
-    height: 40,
-    fontSize: 16,
-  },
-});

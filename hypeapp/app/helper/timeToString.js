@@ -1,5 +1,8 @@
-export function timeToString(timeInMillis) {
-    const seconds = Math.floor(timeInMillis/1000);
+export function timeToString(time, isInMillis) {
+    let seconds = time;
+    if(isInMillis) {
+        seconds = Math.floor(time/1000);
+    }
 
     if(seconds <= 60) {
         return seconds + 'sec';

@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from "expo-router"
 import Gauge from "../../helper/Gauge";
 import Background from "../../helper/backgrounds";
-import { ActivityIndicator, Alert, Button, ImageBackground, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Button, Dimensions, ImageBackground, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { mapCategory } from "../../helper/categories";
 import { useEffect, useRef, useState } from "react";
 import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, increment, onSnapshot, query, setDoc, updateDoc, where } from "@react-native-firebase/firestore";
@@ -11,9 +11,15 @@ import { useUser } from "@/app/context/UserContext";
 import colors from "@/app/helper/colors";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { timeToString } from "@/app/helper/timeToString";
+import Ionicons from '@expo/vector-icons/Ionicons';
+import deviceSizes from "@/app/helper/deviceSizes";
 
+const deviceWidth = Dimensions.get('window').width;
+const deviceHeight = Dimensions.get('window').height;
 
 export default function Vote() {
+
     
     const poll = useLocalSearchParams();
     const {user} = useUser(); 
@@ -36,11 +42,9 @@ export default function Vote() {
         const unsub = onSnapshot(docRef, (docSnap) => {
             if(docSnap.exists()) {
                 const data = docSnap.data();
-                const fetchedLeftVotes = data.left_votes;
-                const fetchedRightVotes = data.right_votes;
-                setLeftVotes(fetchedLeftVotes);
-                setRightVotes(fetchedRightVotes);
-                setTotalVotes(fetchedLeftVotes+fetchedRightVotes);
+                setLeftVotes(data.left_votes);
+                setRightVotes(data.right_votes);
+                setTotalVotes(data.total_votes);
             }
         });
 
@@ -61,24 +65,32 @@ export default function Vote() {
     }
 
     const voteForPoll = async (side) => {
+
+        //if(pollVoteRef.current) return;
+
         try{
+            pollVoteRef.current = true; // Directly disables voteButtons
+
             const docSnap = await getDoc(docRef);
             const data = docSnap.data();
             
             if(side == 'left') {
-                await updateDoc(docRef, {left_votes: increment(1)})
+                await updateDoc(docRef, {left_votes: increment(1), total_votes: increment(1)})
+                await setDoc(votedPollRef, {vote: 'left', ...data});
+                setPollVote('left');
             }
             else if (side == 'right') {
-                await updateDoc(docRef, {right_votes: increment(1)})
+                await updateDoc(docRef, {right_votes: increment(1), total_votes: increment(1)})
+                await setDoc(votedPollRef, {vote: 'right', ...data});
+                setPollVote('right');
             }
+
 
             if((data.left_votes + data.right_votes) % 1 == 0) { // Every vote => one point (will be changed in release)
                 gainHype(poll.username); // Give it to the guy who posted the poll
             }
 
             gainHype(user.displayName); 
-
-            fetchVotes();
         }
         catch(e){
             const msg = 'Something went wrong when voting: ';
@@ -96,6 +108,9 @@ export default function Vote() {
 
     const savedPollRef = doc(db, 'user', user.uid, 'saved_polls', poll.id);
     const [isPollSaved, setIsPollSaved] = useState(null);
+    const votedPollRef = doc(db, 'user', user.uid, 'voted_polls', poll.id);
+    const [pollVote, setPollVote] = useState(null);
+    const pollVoteRef = useRef(false); // Used to make the animation faster
 
     const pollSaved = async () => {
         try {
@@ -104,6 +119,19 @@ export default function Vote() {
         }
         catch(e) {
             console.error("Error when pollSaved(): ", e);
+        }
+    }
+
+    const pollVoted = async () => {
+        try {
+            const docSnap = await getDoc(votedPollRef);
+            if(docSnap.exists()) {
+                setPollVote(docSnap.data().vote);
+                pollVoteRef.current = true;
+            }
+        }
+        catch(e) {
+            console.error("Error when pollVoted(): ", e);
         }
     }
 
@@ -136,6 +164,7 @@ export default function Vote() {
             try {
                 await fetchStartAt();
                 await pollSaved();
+                await pollVoted();
                 unsubVotes = fetchVotes();
             }
             catch(e) {
@@ -156,7 +185,7 @@ export default function Vote() {
     useEffect(()=> {
 
         if(!isLoading) {
-            const stopCountDown = startCountDown(startAt, poll.seconds, (remaining) => {setTimeLeft(remaining)});
+            const stopCountDown = startCountDown(startAt, poll.seconds, (remaining) => {setTimeLeft(timeToString(remaining,false))});
             return () => {
                 if(stopCountDown) stopCountDown();
             }
@@ -168,7 +197,7 @@ export default function Vote() {
 
     if(isLoading || timeLeft == null) {
         return(
-            <ImageBackground source={backgrounds.hypeBG} style={{flex: 1, justifyContent: 'center'}}>
+            <ImageBackground source={backgrounds.baseBG} style={{flex: 1, justifyContent: 'center'}}>
                 <ActivityIndicator size='large'/>
             </ImageBackground>
         )
@@ -185,7 +214,7 @@ export default function Vote() {
                 </View>
 
                 <View style={styles.infoContainer}>
-                    <Text adjustsFontSizeToFit numberOfLines={6} style={styles.titleText}>{poll.title}</Text>
+                    <Text adjustsFontSizeToFit numberOfLines={10} style={styles.titleText}>{poll.title}</Text>
                     <Pressable style={{alignSelf: 'flex-end'}} onPress={async ()=>{await savePoll();}}>
                         <AntDesign name={isPollSaved ? 'star': 'staro'} size={30} color={colors.orange} />
                     </Pressable>
@@ -193,10 +222,9 @@ export default function Vote() {
 
                 <Gauge
                     preview={false}
-                    gaugeWidth={400}
-                    gaugeHeight={200}
-                    gaugeRadius={150}
-                    pointerLength={30}
+                    gaugeWidth={deviceWidth}
+                    gaugeHeight={deviceWidth/2.3}
+                    gaugeRadius={deviceWidth*0.25}
                     leftVotes={parseInt(leftVotes)}
                     rightVotes={parseInt(rightVotes)}
                     leftLabel={poll.left_label}
@@ -205,22 +233,25 @@ export default function Vote() {
 
                 {poll.username != user.displayName ? (
                     <>
-                    {timeLeft != 0 ? (
-                        <>
-                            <View style={styles.voteContainer}>
-                                <Button title='Left' onPress={()=>{voteForPoll('left');}}/>
-                                <Button title='Right' onPress={()=>{voteForPoll('right');}} />
-                            </View>
-                            <View style={styles.voteContainer}>
-                                <Text>{leftVotes}</Text>
-                                <Text>{rightVotes}</Text>
-                            </View>
-                        </>
-                    ):
-                    <>
-
-                        </>
-                    }
+                        <View style={styles.voteContainer}>
+                            <TouchableOpacity 
+                                disabled={ timeLeft == '0sec'}
+                                style={[styles.voteButtonStyle, (pollVoteRef.current || timeLeft == '0sec') && styles.voteButtonDisabled]}
+                                onPress={()=>{voteForPoll('left')}}>
+                                
+                                <Ionicons name="arrow-back-circle-outline" size={deviceWidth/5}
+                                color={pollVote == 'left' ? 'green': colors.red1} />
+                            </TouchableOpacity >
+                            <TouchableOpacity 
+                                disabled={ timeLeft == '0sec'}
+                                style={[styles.voteButtonStyle, (pollVoteRef.current || timeLeft == '0sec') && styles.voteButtonDisabled]}
+                                onPress={()=>{voteForPoll('right')}}
+                                >
+                            
+                                <Ionicons name="arrow-forward-circle-outline" size={deviceWidth/5} 
+                                color={pollVote == 'right' ? 'green': colors.red1} />
+                            </TouchableOpacity >
+                        </View>
                     </>
                 ):
                 <>
@@ -229,8 +260,11 @@ export default function Vote() {
 
             }
             <View style={styles.infoContainer2}>
-                <Text style={styles.timeLeftText}>{timeLeft != 0 ? timeLeft + " left!": "Voting closed!"}</Text>
-                <Text style={styles.usersVotedText}>🔥 {totalVotes} users voted 🔥</Text>
+                <Text style={styles.timeLeftText}>{timeLeft != '0sec' ? timeLeft + " left": "Voting closed!"}</Text>
+                <Text style={styles.usersVotedText}
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                >🔥 {totalVotes} votes 🔥</Text>
             </View>
             </SafeAreaView>
 
@@ -243,7 +277,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginTop: 30,
         justifyContent: 'space-around',
-        width: '100%'
+        alignItems: 'center',
+        width: '100%',
+        marginBottom: 10,
+    },
+    voteButtonStyle: {
+        elevation: 15,
+        backgroundColor: colors.yellow,
+        borderRadius: 100,
+    },
+    voteButtonDisabled: {
+        backgroundColor: colors.yellow,
+        opacity: 0.3,
+        borderRadius: 40,
     },
     infoContainer: {
         padding: 10,
@@ -253,16 +299,16 @@ const styles = StyleSheet.create({
         borderBottomWidth: 2,
         borderColor: colors.red2,
         justifyContent: 'space-between',
+        marginBottom: 30
         //backgroundColor: 'white',
     },
     titleText: {
-        fontSize: 25,
+        fontSize: 25 * deviceSizes.deviceWidth/100,
     },
     categoryText: {
         fontSize: 14,
     },
     infoContainer2: {
-        //backgroundColor: 'white',
         flex: 1,
         justifyContent: 'flex-end',
         alignItems: 'center',
@@ -270,10 +316,10 @@ const styles = StyleSheet.create({
         marginBottom: 30
     },
     timeLeftText: {
-        fontSize: 30,
+        fontSize: deviceWidth/15,
     },
     usersVotedText: {
-        fontSize: 35,
+        fontSize: deviceWidth/10,
         width: '90%',
         padding: 5,
         borderWidth: 2,

@@ -1,9 +1,12 @@
-import { FlatList, Image, ImageBackground, Pressable, StyleSheet } from "react-native";
+import { Dimensions, FlatList, Image, ImageBackground, Pressable, StyleSheet } from "react-native";
 import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import backgrounds from "@/app/helper/backgrounds";
 import categories from "@/app/helper/categories";
+import colors from "@/app/helper/colors";
+import Entypo from '@expo/vector-icons/Entypo';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function Categories() {
 
@@ -12,7 +15,26 @@ export default function Categories() {
     return (
 
         <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
-          <SafeAreaView style={{justifyContent: 'center', alignItems: 'center'}}>
+          <SafeAreaView style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+            <Pressable style={styles.pollButton} onPress={()=>{router.push({
+              pathname: '/(loggedin)/(pollView)',
+              params: {
+                category: null,
+                isUserPolls: false,
+                isSavedPolls: false,
+                isVotedPolls: false,
+              }
+            })}}>
+              <Entypo name="gauge" size={(deviceWidth*400)/1000} color={colors.orange} />
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <Text style={{fontSize: 40, color: colors.orange}}>Polls</Text>
+                <MaterialIcons name="arrow-right-alt" size={40} color={colors.orange} />
+              </View>
+            </Pressable>
+            <View style={{width: '95%', marginTop: 30, marginBottom: 10}}>
+              <Text style={{fontSize: 30, color: colors.orange}}>Categories</Text>
+            </View>
+            
             <FlatList 
                 data={categories}
                 keyExtractor={(item) => item.value}
@@ -24,7 +46,8 @@ export default function Categories() {
                     params: {
                       category: item.value,
                       isUserPolls: false,
-                      isSavedPolls: false
+                      isSavedPolls: false,
+                      isVotedPolls: false,
                     }
                   })}}>
                     <View style={styles.categoryContainer} >
@@ -43,11 +66,22 @@ export default function Categories() {
     )
 }
 
+const deviceWidth = Dimensions.get('window').width;
+const deviceHeight = Dimensions.get('window').height;
+
 const styles = StyleSheet.create({
   contentContainer: {
    // flex: 1,
     //backgroundColor: 'white',
     justifyContent: 'center',
+  },
+  pollButton: {
+    backgroundColor: colors.orange05,
+    borderRadius: 20,
+    width: deviceWidth- 30,
+    height: deviceHeight / 3,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   categoryContainer: {
     borderWidth: 1,
