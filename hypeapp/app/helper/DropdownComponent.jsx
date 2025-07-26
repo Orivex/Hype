@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import categories from "./categories"
+import colors from './colors';
 
 
 const data = categories;
 const DropdownComponent = ({value, onChange, style}) => {
-  const renderItem = item => {
+  const renderItem = (item) => {
     return (
       <View style={style.item}>
         <Text style={style.textItem}>{item.label}</Text>
@@ -22,6 +23,7 @@ const DropdownComponent = ({value, onChange, style}) => {
       iconStyle={style.iconStyle}
       data={data}
       search
+      activeColor={colors.yellow}
       maxHeight={300}
       labelField="label"
       valueField="value"

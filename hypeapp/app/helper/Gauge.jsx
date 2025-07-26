@@ -85,7 +85,7 @@ const Gauge = ({ preview=true, leftLabel, rightLabel, leftVotes, rightVotes, gau
           textAnchor="end"
           fill={'white'}
           stroke={'black'}
-          strokeWidth={0.2}
+          strokeWidth={preview ? 0.2: 0.5}
         >
         {leftLabel}
         </SvgText>
@@ -95,7 +95,7 @@ const Gauge = ({ preview=true, leftLabel, rightLabel, leftVotes, rightVotes, gau
           fontSize={width/20}
           fill={'black'}
           stroke={'white'}
-          strokeWidth={0.2}
+          strokeWidth={preview ? 0.2: 0.4}
         >
           {rightLabel}
         </SvgText>

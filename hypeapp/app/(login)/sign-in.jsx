@@ -1,21 +1,33 @@
 import React, { useState } from 'react';
-import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert } from 'react-native';
+import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert, ImageBackground } from 'react-native';
 import { getAuth, signInWithCredential, signInWithEmailAndPassword  } from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import backgrounds from '../helper/backgrounds';
+import textInputStyle from '../helper/textInputStyle';
+import colors from '../helper/colors';
 
 export default function SignIn() {
     const router = useRouter();
 
     const signIn = ({email, password}) => {
       signInWithEmailAndPassword(getAuth(), email, password)
-        .then(() => {
+        .then((userCredential) => {
+          const user = userCredential.user;
+
+          if(!user.emailVerified) {
+            throw Error('not-verified');
+          }
+
           setEmail('')
           setPassword('')
           router.push('/(loggedin)/(tabs)/explore')
         })
         .catch((error) => {
-          if(error.code === 'auth/invalid-credential') {
+          if(error.message == 'not-verified') {
+            Alert.alert('Email verification', 'Please verify your email');
+          }
+          else if(error.code === 'auth/invalid-credential') {
             Alert.alert('Email or password is wrong');
           }
           else {
@@ -28,31 +40,36 @@ export default function SignIn() {
   const [password, setPassword] = useState(''); 
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TextInput
-      value={email}
-      onChangeText={setEmail}
-      style={styles.textInput}
-      placeholder='Email'
-      placeholderTextColor={'gray'}
-      />
-      <TextInput
-      value={password}
-      onChangeText={setPassword}
-      style={styles.textInput}
-      placeholder='Password'
-      placeholderTextColor={'gray'}
-      />
-      <View style={{flexDirection: 'row', marginVertical: 10}}>
-        <Button title='Sign in' onPress={()=>{signIn({email, password})}} />
-      </View>
-      <Pressable style={styles.pressable} onPress={()=>{router.push('/sign-up')}}>
-        <Text style={{color: 'cornflowerblue'}} >Don't have an account? Sign up here!</Text>
-      </Pressable>
-      <Pressable style={styles.pressable} onPress={()=>{router.push('/forgot')}}>
-        <Text style={{color: 'cornflowerblue'}} >Forgot password</Text>
-      </Pressable>
-    </SafeAreaView>
+    <ImageBackground source={backgrounds.baseBG} style={{flex: 1, justifyContent: 'center'}}>
+      <SafeAreaView style={styles.container}>
+        <TextInput
+        value={email}
+        onChangeText={setEmail}
+        style={textInputStyle}
+        placeholder='Email'
+        placeholderTextColor={'gray'}
+        autoCapitalize='none'
+        />
+        <TextInput
+        value={password.trim()}
+        onChangeText={setPassword}
+        style={textInputStyle}
+        placeholder='Password'
+        placeholderTextColor={'gray'}
+        secureTextEntry={true}
+        autoCapitalize='none'
+        />
+        <View style={{flexDirection: 'row', marginVertical: 10}}>
+          <Button title='Sign in' color={colors.orange} onPress={()=>{signIn({email, password})}} />
+        </View>
+        <Pressable style={styles.pressable} onPress={()=>{router.push('/sign-up')}}>
+          <Text style={{color: colors.orange}} >Don't have an account? Sign up here!</Text>
+        </Pressable>
+        <Pressable style={styles.pressable} onPress={()=>{router.push('/forgot')}}>
+          <Text style={{color: colors.orange}} >Forgot password</Text>
+        </Pressable>
+      </SafeAreaView>
+    </ImageBackground>
   )
 }
 
@@ -64,11 +81,13 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   textInput: {
+    padding: 10,
     width: '80%',
     borderWidth: 1,
     borderRadius: 10,
     marginVertical: 10,
-    fontSize: 18
+    fontSize: 18,
+    color: 'black'
   },
   pressable: {
     marginVertical: 5

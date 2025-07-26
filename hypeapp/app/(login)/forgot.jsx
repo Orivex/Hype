@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert } from 'react-native';
+import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert, ImageBackground } from 'react-native';
 import { getAuth, sendPasswordResetEmail, signInWithCredential, signInWithEmailAndPassword  } from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import backgrounds from '../helper/backgrounds';
+import textInputStyle from '../helper/textInputStyle';
+import colors from '../helper/colors';
 
 export default function ForgotPassword() {
     const router = useRouter();
@@ -31,20 +34,23 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState(''); 
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TextInput
-      value={email}
-      onChangeText={setEmail}
-      style={styles.textInput}
-      placeholder='Email'
-      placeholderTextColor={'gray'}
-      />
-      <View style={{flexDirection: 'row', marginVertical: 10}}>
-        <Button title='Send email' onPress={()=>{
-          sendEmail(email.trim())}}
-          />
-      </View>
-    </SafeAreaView>
+    <ImageBackground source={backgrounds.baseBG} style={{flex: 1, justifyContent: 'center'}}>
+      <SafeAreaView style={styles.container}>
+        <TextInput
+        value={email}
+        onChangeText={setEmail}
+        style={textInputStyle}
+        placeholder='Email'
+        placeholderTextColor={'gray'}
+        autoCapitalize='none'
+        />
+        <View style={{flexDirection: 'row', marginVertical: 10}}>
+          <Button title='Send email' color={colors.orange} onPress={()=>{
+            sendEmail(email.trim())}}
+            />
+        </View>
+      </SafeAreaView>
+    </ImageBackground>
   )
 }
 
@@ -54,12 +60,5 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingTop: 100,
     alignItems: 'center'
-  },
-  textInput: {
-    width: '80%',
-    borderWidth: 1,
-    borderRadius: 10,
-    marginVertical: 10,
-    fontSize: 18
   }
 })

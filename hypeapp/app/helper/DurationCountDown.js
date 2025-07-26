@@ -1,5 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "@react-native-firebase/firestore";
-
+import { collection, doc, getDoc, serverTimestamp, setDoc } from "@react-native-firebase/firestore";
 
 let serverTimeOffset = 0;
 
@@ -18,10 +17,10 @@ export { serverTimeOffset }
 
 export async function getServerTimeMillis (db) {
     try {
-        const tmpRef = doc(db, "tmp", "serverTimeTest");
-        await setDoc(tmpRef, { serverTime: serverTimestamp()});
-        const docSnap = await getDoc(tmpRef);
-        const serverTime = docSnap.data().serverTime.toMillis();
+        const serverTimeRef = doc(collection(db, 'serverTime'), 'wS8Etm1B4Q8saURENG9B');
+        await setDoc(serverTimeRef, { serverTimeNow: serverTimestamp()});
+        const docSnap = await getDoc(serverTimeRef);
+        const serverTime = docSnap.data().serverTimeNow.toMillis();
         return serverTime;
     }
     catch(e) {
@@ -39,7 +38,7 @@ export function startCountDown(startAt, seconds, callback) {
 
     const interval = setInterval(()=> {
         const remaining = Math.max(endTime - (Date.now() + serverTimeOffset), 0);
-        const remainingSeconds = Math.floor(remaining/1000);
+        const remainingSeconds = Math.round(remaining/1000);
         callback(remainingSeconds)
         if(remainingSeconds <= 0) {
             clearInterval(interval);

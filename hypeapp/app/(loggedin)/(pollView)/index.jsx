@@ -1,17 +1,25 @@
-  import React, { useCallback, useEffect, useRef, useState } from 'react';
-  import { ActivityIndicator, Button, Dimensions, FlatList, ImageBackground, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-  import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-  import Gauge from '@/app/helper/Gauge';
-  import { getFirestore, doc, getDoc, collection, getDocs, query, onSnapshot, where, updateDoc, limit, orderBy, getCountFromServer, startAfter } from '@react-native-firebase/firestore';
-  import categories, { mapCategory } from '@/app/helper/categories';
-  import AntDesign from '@expo/vector-icons/AntDesign';
-  import { getServerTimeMillis, serverTimeOffset, startCountDown } from '@/app/helper/DurationCountDown';
-  import SegmentedControl from '@react-native-segmented-control/segmented-control';
-  import backgrounds from '../../helper/backgrounds';
-  import { SafeAreaView } from 'react-native-safe-area-context';
-  import colors from '@/app/helper/colors';
-  import { useUser } from '@/app/context/UserContext';
-  import { timeToString } from '@/app/helper/timeToString'
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Button, Dimensions, FlatList, ImageBackground, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import Gauge from '@/app/helper/Gauge';
+import { getFirestore, doc, getDoc, collection, getDocs, query, onSnapshot, where, updateDoc, limit, orderBy, getCountFromServer, startAfter } from '@react-native-firebase/firestore';
+import categories, { mapCategory } from '@/app/helper/categories';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import { getServerTimeMillis, serverTimeOffset, startCountDown } from '@/app/helper/DurationCountDown';
+import SegmentedControl from '@react-native-segmented-control/segmented-control';
+import backgrounds from '../../helper/backgrounds';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import colors from '@/app/helper/colors';
+import { useUser } from '@/app/context/UserContext';
+import { timeToString } from '@/app/helper/timeToString'
+import deviceSizes from '@/app/helper/deviceSizes';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
+import Entypo from '@expo/vector-icons/Entypo';
+import Feather from '@expo/vector-icons/Feather';
+
+  const deviceWidth = deviceSizes.deviceWidth;
+  const deviceHeight = deviceSizes.deviceHeight;
 
   export default function Index() {
 
@@ -25,7 +33,6 @@
     const [polls, setPolls] = useState([]);
     const [leftVotes, setLeftVotes] = useState({});
     const [rightVotes, setRightVotes] = useState({});
-    const pollIdsRef = useRef(new Set());
 
     const [timeLeft, setTimeLeft] = useState({});
     const countDownStopFunctions = useRef({});
@@ -44,21 +51,25 @@
 
     const flatListRef = useRef(null);
 
-    let unsubVotes;
+    const savedOrVotedPolls = async () => {
 
-    const checkRef = () => {
-      if(isSavedPolls == 'true') {
-        return collection(db, 'user', user.uid, 'saved_polls');
+      let collectionRef;
+
+      if(isSavedPolls== 'true') collectionRef = collection(db, 'user', user.uid, 'saved_polls');
+      if(isVotedPolls == 'true') collectionRef = collection(db, 'user', user.uid, 'voted_polls');
+
+      const docSnap = await getDocs(collectionRef);
+      let idArray = [];
+      if(docSnap.docs.length > 0) {
+        docSnap.forEach(doc => {
+          idArray.push(doc.data().poll_id);
+        })
       }
 
-      if(isVotedPolls == 'true') {
-        return collection(db, 'user', user.uid, 'voted_polls');
-      }
-
-      return pollRef; // Default poll reference
+      return idArray;
     }
 
-    const checkAdditionalQuery = (q) => {
+    const checkAdditionalQuery = async (q) => {
 
       if(lastVisible.current) {
         q = query(q, startAfter(lastVisible.current));
@@ -79,14 +90,16 @@
       try {
         let q;
         const last30min = (await getServerTimeMillis(db)) - 1800000;
-        q = query(checkRef(), 
+        // Sadly won't work with the where-claused in saved_polls or voted_polls
+
+        q = query(pollRef, 
+          orderBy('start_at', 'desc'),
+          where('start_at', '>=', last30min),
           orderBy('total_votes', 'desc'),
           where('total_votes', '>=', 1),
-          orderBy('start_at', 'desc'),
-          where('start_at', '>=', last30min), // Last 30min
           limit(10));
 
-        q = checkAdditionalQuery(q);
+        q = await checkAdditionalQuery(q);
         const docSnap = await getDocs(q);
 
         if(docSnap.docs.length > 0) {
@@ -96,31 +109,7 @@
         return docSnap.docs;
       }
       catch(e) {
-        console.error("Error when fetchHotPolls(): ", e);
-      }
-    }
-
-    const fetchNewestPolls = async () => {
-      try {
-        let q;
-
-        q = query(checkRef(),
-          orderBy('start_at', 'desc'),
-          limit(10));
-
-        q = checkAdditionalQuery(q);
-
-        const docSnap = await getDocs(q);
-
-        if(docSnap.docs.length > 0) {
-          lastVisible.current = docSnap.docs[docSnap.docs.length-1];
-        }
-
-        return docSnap.docs;
-
-      }
-      catch(e) {
-        console.error("Error when loading newest polls: ", e);
+        console.error("Error when loading hot polls: ", e);
       }
     }
 
@@ -128,13 +117,39 @@
       try {
         const serverTime = await getServerTimeMillis(db);
         let q;
-
-        q = query(checkRef(),
-          orderBy('expires_at', 'desc'),
+        
+        q = query(pollRef,
+          orderBy('start_at', 'desc'),
           where('expires_at', '<=', serverTime),
           limit(10));
+        
+        q = await checkAdditionalQuery(q);
+        
+        const docSnap = await getDocs(q);
+        
+        if(docSnap.docs.length > 0) {
+          lastVisible.current = docSnap.docs[docSnap.docs.length-1];
+        }
 
-        q = checkAdditionalQuery(q);
+        return docSnap.docs;
+
+      }
+      catch(e) {
+        console.error("Error when loading voting closed polls: ", e);
+      }
+    }
+
+    const fetchVotingOpenPolls = async () => {
+      try {
+        const serverTime = await getServerTimeMillis(db);
+        let q;
+
+        q = query(pollRef,
+          orderBy('expires_at'),
+          where('expires_at', '>', serverTime),
+          limit(10));
+
+        q = await checkAdditionalQuery(q);
 
         const docSnap = await getDocs(q);
         
@@ -146,59 +161,75 @@
 
       }
       catch(e) {
-        console.error("Error when loading newest polls: ", e);
+        console.error("Error when loading voting open polls: ", e);
       }
     }
 
     const startPollCountDown = (poll) => {
-
-      if(countDownStopFunctions.current[poll.id]) return;
-      
       const stopCountDown = startCountDown(poll.start_at, poll.seconds, (remaining)=>{
       setTimeLeft(prev => ({...prev, [poll.id]: timeToString(remaining, false)})); })  
-      countDownStopFunctions.current[poll.id] = stopCountDown;
+
+      return stopCountDown;
     }
 
-   const getLeftRightVotes = async () => {
-      try {
-        let leftVotesTemp = {};
-        let rightVotesTemp = {};
-        for(const poll of polls) {
-          const docRef = doc(db, 'poll', poll.id);
-          const docSnap = await getDoc(docRef);
-
-          if (docSnap.exists()) {
-            leftVotesTemp[poll.id] = docSnap.data().left_votes;
-            rightVotesTemp[poll.id] = docSnap.data().right_votes;
-          }
-
-          //console.log(poll.title + ":...:", leftVotesTemp[poll.id], rightVotesTemp[poll.id]);
-        }
-        setLeftVotes(leftVotesTemp);
-        setRightVotes(rightVotesTemp);
-      }
-      catch(e) {
-        console.error("Error when getLeftRightVotes(): ", e);
-      }
-   }
-
-   const getVotes = () => {
-      const leftVotesTemp = {};
-      const rightVotesTemp = {};
-      const unsub = onSnapshot(pollRef, (docSnap)=>{
-        for(const doc of docSnap.docs) {
-            if(pollIdsRef.current.has(doc.id)) {
-              leftVotesTemp[doc.id] = doc.data().left_votes;
-              rightVotesTemp[doc.id] = doc.data().right_votes;
-            }
-        }
-
-        setLeftVotes(leftVotesTemp);
-        setRightVotes(rightVotesTemp);
+   const subLiveVotes = (id) => {
+    try {
+      let leftVotesTemp;
+      let rightVotesTemp;
+      const unsub = onSnapshot(doc(pollRef, id), (docSnap) => {
+          leftVotesTemp = docSnap.data().left_votes;
+          rightVotesTemp = docSnap.data().right_votes;
+          setLeftVotes(prev => ({...prev, [id]: leftVotesTemp}));
+          setRightVotes(prev => ({...prev, [id]: rightVotesTemp}));
       })
 
       return unsub;
+    }
+    catch(e) {
+      console.error("Error when subLiveVotes(): ", e);
+    }
    }
+
+   const viewablePollsRef = useRef(new Set());
+   const viewablePollSubsRef = useRef({});
+
+   const onViewableItemsChanged = useRef(({viewableItems}) => {
+      const newItems = new Set(viewableItems.map(item => item.item));
+
+      newItems.forEach(item => {
+        const id = item.id;
+
+        if(!viewablePollsRef.current.has(item)) {
+
+          viewablePollsRef.current.add(item);
+
+          const unsub = subLiveVotes(id);
+          viewablePollSubsRef.current[id] = unsub;
+
+          const stopCountDown = startPollCountDown(item);
+          countDownStopFunctions.current[id] = stopCountDown;
+        }
+      })
+
+      viewablePollsRef.current.forEach(item => {
+
+        if(!newItems.has(item)) {
+          const id = item.id;
+
+          viewablePollsRef.current.delete(item);
+
+          viewablePollSubsRef.current[id]();
+          delete viewablePollSubsRef.current[id];
+
+          countDownStopFunctions.current[id]();
+          delete countDownStopFunctions.current[id];
+        }
+      })
+
+      //console.log(Object.keys(countDownStopFunctions.current).length);
+      //console.log(Object.keys(viewablePollSubsRef.current).length);
+
+   }).current;
 
     const fetchNewPolls = async (isRefresh) => {
       try {
@@ -206,7 +237,6 @@
           let docs = [];
 
           if(isRefresh || filterChanged.current) {
-            pollIdsRef.current = new Set();
             lastVisible.current = null;
           }
 
@@ -216,7 +246,7 @@
               docs = await fetchHotPolls();
               break;
             case 1:
-              docs = await fetchNewestPolls();
+              docs = await fetchVotingOpenPolls();
               break;
             case 2:
               docs = await fetchVotingClosedPolls();
@@ -233,18 +263,20 @@
               console.log("No more polls to load (fetchNewestPolls)");
           }
 
+          if(isSavedPolls == 'true' || isVotedPolls == 'true') {
+            const idArray = new Set(await savedOrVotedPolls());
+            docs = docs.filter(doc => idArray.has(doc.id));
+          }
+
           const fetchedPolls = docs.map(doc => ({
             id: doc.id,
             postedAgo: timeToString( (Date.now() + serverTimeOffset) - doc.data().start_at, true ),
             ...doc.data()
           }))
 
-          fetchedPolls.forEach((fetchedPoll) => {
-            startPollCountDown(fetchedPoll);
-            pollIdsRef.current.add(fetchedPoll.id);
-          })
-
-          unsubVotes = getVotes();
+          //fetchedPolls.forEach((fetchedPoll) => {
+          //  startPollCountDown(fetchedPoll);
+          //})
 
           if(fetchedPolls.length > 0) {
             setPolls(prev => [...prev, ...fetchedPolls]);
@@ -273,28 +305,26 @@
       loadFirstPolls();
 
       return () => {
-        if(unsubVotes) unsubVotes();
-        stopAllCountdowns();
+        stopAllListeners();
       }
 
     }, [])
 
-    //useFocusEffect(
-    //  useCallback(()=> {
-    //    if(!isLoadingFirstPolls) {
-    //      console.log("BRO");
-    //      getLeftRightVotes();
-    //    }
-    //    return()=>{}
-    //  }, [])
-    //)
+    const stopAllListeners = () => {
 
-    const stopAllCountdowns = () => {
-        Object.values(countDownStopFunctions.current).forEach(stopFn => {
-          if (stopFn) stopFn();
-        });
-        countDownStopFunctions.current = {};
-      };
+      // Live votes
+      Object.values(viewablePollSubsRef.current).forEach(unsub => {
+        if(unsub) unsub();
+      });
+
+      // Live timer
+      Object.values(countDownStopFunctions.current).forEach(stopFn => {
+        if (stopFn) stopFn();
+      });
+
+      countDownStopFunctions.current = {};
+      viewablePollSubsRef.current = {};
+    }
 
     const onRefresh = React.useCallback(async () => {
 
@@ -323,7 +353,6 @@
       try {
         //if(polls.length >= 20) {
           //  setPolls([]);
-          //  pollIdsRef.current = new Set();
           //}
         console.log("Reloading because end reached");
         isLoadingPolls.current = true;
@@ -346,15 +375,31 @@
         )
     }
 
+    const pollViewTitleComponent = (text, icon) => {
+      return (
+        <View style={{flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', padding: 20}}>
+          {icon}
+          <Text adjustsFontSizeToFit numberOfLines={1} style={{fontSize: deviceWidth/10, color: colors.red2, alignSelf: 'center'}}>
+            {text}
+          </Text>
+          {icon}
+        </View>
+      )
+    } 
 
     return (
       <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
 
         <SafeAreaView style={{flex: 1}}>
+          {isUserPolls == 'true' && pollViewTitleComponent("Your polls", <Entypo name="gauge" size={deviceWidth/10} color={colors.red1} />)}
+          {isSavedPolls == 'true' && pollViewTitleComponent("Saved", <AntDesign name="star" size={deviceWidth/10} color={colors.orange} />)}
+          {isVotedPolls == 'true' && pollViewTitleComponent("Voted", <Feather name="check-circle" size={deviceWidth/10} color={colors.red1} />)}
+          {category != null && pollViewTitleComponent(mapCategory(category.toString()), null)}
+
           <View style={styles.sortingBar}>
 
             <SegmentedControl
-              values={['Hot', 'Newest', 'Voting closed']}
+              values={['Hot', 'Voting open', 'Voting closed']}
               selectedIndex={filter.current}
               tintColor={colors.orange}
               backgroundColor={colors.red1}
@@ -377,11 +422,10 @@
           }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.5}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{viewAreaCoveragePercentThreshold: 3}}
+          decelerationRate={0.1}
           ListFooterComponent={
-            //isLoadingPolls.current
-            //? 
-            //<ActivityIndicator size='large'/>
-            //: 
             <Button title={allPollsLoaded ? "Refresh page": "Load more"} onPress={async ()=>{
               console.log("Load more Button triggered"); 
               if(allPollsLoaded) {
@@ -400,10 +444,10 @@
                 })}}>
                   <View style={styles.postContentContainer}>
                       <View style={styles.userInfoContainer}>
-                        <View style={{flexDirection: 'row'}}>
-                          <Text style={{fontSize: 16, color: colors.red1, fontWeight: 'bold'}}>{item.username}</Text>
-                          <Text style={{fontSize: 14, color: 'black'}}> posted in </Text>
-                          <Text style={{fontSize: 16, color: colors.red2}}>{mapCategory(item.category)}</Text>
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                          <Text style={{fontSize: deviceWidth/26, color: colors.red1, fontWeight: 'bold'}}>{item.username}</Text>
+                          <Text style={{fontSize: deviceWidth/36, color: 'black'}}> posted in </Text>
+                          <Text style={{fontSize: deviceWidth/26, color: colors.red2}}>{mapCategory(item.category)}</Text>
                         </View>
                         <Text style={{fontSize: 11, color: 'black'}}>{item.postedAgo} ago</Text>
                       </View>
@@ -439,12 +483,8 @@
 
   }
 
-  const deviceWidth = Dimensions.get('window').width;
-  const deviceHeight = Dimensions.get('window').height;
-
   const styles = StyleSheet.create({
     sortingBar: {
-      marginTop: 60,
       height: 80,
       width: '100%',
       backgroundColor: colors.yellow,

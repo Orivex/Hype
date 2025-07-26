@@ -7,7 +7,7 @@ const colors = {
 
 
     red1: 'rgb(230, 82, 31)',
-    red2: 'rgb(234, 47, 20)'
+    red2: 'rgba(234, 47, 20, 1)'
 }
 
-export default colors
+export default colors;

@@ -1,4 +1,4 @@
-import { Dimensions, FlatList, Image, ImageBackground, Pressable, StyleSheet } from "react-native";
+import { Dimensions, FlatList, Image, ImageBackground, Pressable, StyleSheet, TouchableOpacity } from "react-native";
 import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,6 +7,10 @@ import categories from "@/app/helper/categories";
 import colors from "@/app/helper/colors";
 import Entypo from '@expo/vector-icons/Entypo';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import deviceSizes from "@/app/helper/deviceSizes";
+
+const deviceWidth = deviceSizes.deviceWidth;
+const deviceHeight = deviceSizes.deviceHeight;
 
 export default function Categories() {
 
@@ -16,7 +20,7 @@ export default function Categories() {
 
         <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
           <SafeAreaView style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-            <Pressable style={styles.pollButton} onPress={()=>{router.push({
+            <TouchableOpacity style={styles.pollButton} onPress={()=>{router.push({
               pathname: '/(loggedin)/(pollView)',
               params: {
                 category: null,
@@ -30,7 +34,7 @@ export default function Categories() {
                 <Text style={{fontSize: 40, color: colors.orange}}>Polls</Text>
                 <MaterialIcons name="arrow-right-alt" size={40} color={colors.orange} />
               </View>
-            </Pressable>
+            </TouchableOpacity>
             <View style={{width: '95%', marginTop: 30, marginBottom: 10}}>
               <Text style={{fontSize: 30, color: colors.orange}}>Categories</Text>
             </View>
@@ -65,9 +69,6 @@ export default function Categories() {
 
     )
 }
-
-const deviceWidth = Dimensions.get('window').width;
-const deviceHeight = Dimensions.get('window').height;
 
 const styles = StyleSheet.create({
   contentContainer: {

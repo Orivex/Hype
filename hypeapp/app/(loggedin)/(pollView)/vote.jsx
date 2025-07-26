@@ -15,11 +15,10 @@ import { timeToString } from "@/app/helper/timeToString";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import deviceSizes from "@/app/helper/deviceSizes";
 
-const deviceWidth = Dimensions.get('window').width;
-const deviceHeight = Dimensions.get('window').height;
+const deviceWidth = deviceSizes.deviceWidth;
+const deviceHeight = deviceSizes.deviceHeight;
 
 export default function Vote() {
-
     
     const poll = useLocalSearchParams();
     const {user} = useUser(); 
@@ -54,7 +53,7 @@ export default function Vote() {
     const gainHype = async (name) => {
         try {
             const docSnap = await getDocs(query(userRef, where('name', '==', name)));
-            if(!docSnap.empty) {
+            if(docSnap.docs.length > 0) {
                 const docRef = docSnap.docs[0].ref;
                 await updateDoc(docRef, {hype_score: increment(1)});
             }
@@ -66,28 +65,28 @@ export default function Vote() {
 
     const voteForPoll = async (side) => {
 
-        //if(pollVoteRef.current) return;
+        if(pollVoteRef.current) return;
 
         try{
             pollVoteRef.current = true; // Directly disables voteButtons
-
-            const docSnap = await getDoc(docRef);
-            const data = docSnap.data();
             
             if(side == 'left') {
                 await updateDoc(docRef, {left_votes: increment(1), total_votes: increment(1)})
-                await setDoc(votedPollRef, {vote: 'left', ...data});
+                await setDoc(votedPollRef, {vote: 'left', poll_id: poll.id});
                 setPollVote('left');
             }
             else if (side == 'right') {
                 await updateDoc(docRef, {right_votes: increment(1), total_votes: increment(1)})
-                await setDoc(votedPollRef, {vote: 'right', ...data});
+                await setDoc(votedPollRef, {vote: 'right', poll_id: poll.id});
                 setPollVote('right');
             }
 
-
-            if((data.left_votes + data.right_votes) % 1 == 0) { // Every vote => one point (will be changed in release)
-                gainHype(poll.username); // Give it to the guy who posted the poll
+            const docSnap = await getDoc(docRef);
+            if(docSnap.exists()) {
+                const data = docSnap.data();
+                if((data.left_votes + data.right_votes) % 1 == 0) { // Every vote => one point (will be changed in release)
+                    gainHype(poll.username); // Give it to the guy who posted the poll
+                }
             }
 
             gainHype(user.displayName); 
@@ -142,12 +141,9 @@ export default function Vote() {
                 setIsPollSaved(false);
             }
             else if (!isPollSaved) {
-                const docSnap = await getDoc(docRef);
-                if(docSnap.exists()) {
-                    await setDoc(savedPollRef, docSnap.data());
-                    setIsPollSaved(true);
-                    Alert.alert("Poll saved");
-                }
+                await setDoc(savedPollRef, {poll_id: poll.id});
+                setIsPollSaved(true);
+                Alert.alert("Poll saved");
             }
         }
         catch(e) {
@@ -207,17 +203,21 @@ export default function Vote() {
 
         <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
             <SafeAreaView style={{flex: 1, alignItems: 'center'}}>
-                <View style={{flexDirection: 'row', marginTop: 50}}>
-                    <Text style={{fontSize: 20, color: colors.red1, fontWeight: 'bold'}}>{poll.username}</Text>
-                    <Text style={{fontSize: 18, color: 'black'}}> posted in </Text>
-                    <Text style={{fontSize: 20, color: colors.red2}}>{mapCategory(poll.category)}</Text>
+                <View style={{flexDirection: 'row', marginTop: 50, alignItems: 'center'}}>
+                    <Text style={{fontSize: deviceWidth/25, color: colors.red1, fontWeight: 'bold'}}>{poll.username}</Text>
+                    <Text style={{fontSize: deviceWidth/35, color: 'black'}}> posted in </Text>
+                    <Text style={{fontSize: deviceWidth/25, color: colors.red2}}>{mapCategory(poll.category)}</Text>
                 </View>
 
                 <View style={styles.infoContainer}>
-                    <Text adjustsFontSizeToFit numberOfLines={10} style={styles.titleText}>{poll.title}</Text>
-                    <Pressable style={{alignSelf: 'flex-end'}} onPress={async ()=>{await savePoll();}}>
+                    <Text adjustsFontSizeToFit numberOfLines={10} style={styles.titleText}>
+                        {poll.title}
+                    </Text>
+                </View>
+                <View style={styles.starContainer}>
+                    <TouchableOpacity style={{}} onPress={async ()=>{await savePoll();}}>
                         <AntDesign name={isPollSaved ? 'star': 'staro'} size={30} color={colors.orange} />
-                    </Pressable>
+                    </TouchableOpacity>
                 </View>
 
                 <Gauge
@@ -275,7 +275,6 @@ export default function Vote() {
 const styles = StyleSheet.create({
     voteContainer: {
         flexDirection: 'row',
-        marginTop: 30,
         justifyContent: 'space-around',
         alignItems: 'center',
         width: '100%',
@@ -289,21 +288,34 @@ const styles = StyleSheet.create({
     voteButtonDisabled: {
         backgroundColor: colors.yellow,
         opacity: 0.3,
-        borderRadius: 40,
+        borderRadius: 100,
     },
     infoContainer: {
-        padding: 10,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
         width: '90%',
-        height: '30%',
+        height: '25%',
         borderTopWidth: 2,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.2)',
+        borderTopColor: colors.red2,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        //backgroundColor: 'white',
+    },
+    starContainer: {
+        paddingVertical: 2,
+        paddingHorizontal: 10,
+        width: '90%',
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
         borderBottomWidth: 2,
         borderColor: colors.red2,
-        justifyContent: 'space-between',
-        marginBottom: 30
+        marginBottom: 10,
         //backgroundColor: 'white',
     },
     titleText: {
-        fontSize: 25 * deviceSizes.deviceWidth/100,
+        fontSize: deviceSizes.deviceWidth,
     },
     categoryText: {
         fontSize: 14,

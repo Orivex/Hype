@@ -1,28 +1,48 @@
 import React, { useState } from 'react';
 import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert, ImageBackground, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { collection, doc, getFirestore, setDoc } from '@react-native-firebase/firestore'
+import { collection, doc, getDocs, getFirestore, query, setDoc, where } from '@react-native-firebase/firestore'
 import { getAuth, createUserWithEmailAndPassword, updateProfile } from '@react-native-firebase/auth';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import backgrounds from '../helper/backgrounds';
+import textInputStyle from '../helper/textInputStyle';
+import colors from '../helper/colors';
 
 export default function SignUp() {
 
   const db = getFirestore();
-  const userRef = collection(db, "user");
+  const userRef = collection(db, 'user');
 
   const router = useRouter();
 
   const [username, setUsername] = useState(''); 
   const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState(''); 
+  const [passwordRepeat, setPasswordRepeat] = useState(''); 
 
   const [isCreatingUser, setIsCreatingUser] = useState(false);
 
-  const addUser = async (username, uid) => {
+  const usernameExists = async () => {
+    try {
+      const q = query(userRef, where('name', '==', username));
+      const docSnap = await getDocs(q);
+  
+      if(!docSnap.empty) {
+          Alert.alert("Username already exists");
+          return true;
+      }
+  
+      return false;
+    }
+    catch(e) {
+      console.error("Error when usernameExists(): ", e);
+    }
+  }
+
+  const addUser = async (uid) => {
     try {
       const user ={
-        name: username,
+        name: username.trim(),
         hype_score: 0
       }
 
@@ -33,14 +53,33 @@ export default function SignUp() {
     }
   }
 
-  const signUp = (username, email, password) => {
+  const signUp = async () => {
+
+    if(!username || !email || !password || !passwordRepeat) {
+      Alert.alert("Please fill in all fields");
+      return;
+    }
+
+    if(password !== passwordRepeat) {
+      Alert.alert("The repeated password does not match the first password");
+      return;
+    }
+
+    if(await usernameExists()) {
+      Alert.alert("Username already exists");
+      return;
+    }
 
     createUserWithEmailAndPassword(getAuth(), email, password)
       .then(async (userCredential) => {
 
+        setIsCreatingUser(true);
+
         const user = userCredential.user;
 
-        setIsCreatingUser(true);
+        await user.sendEmailVerification();
+
+        Alert.alert('Email verification', 'We have sent you an email. Please click the verification link and then sign in');
 
         setUsername('');
         setEmail('');
@@ -50,15 +89,13 @@ export default function SignUp() {
           displayName: username
         })
 
-        await addUser(username, user.uid);
+        await addUser(user.uid);
 
-        console.log('User account created & signed in!');
-
-        router.push('/(loggedin)/(tabs)/explore');
+        router.push('/(login)/sign-in');
       })
       .catch((error) => {
         if (error.code === 'auth/email-already-in-use') {
-          Alert.alert('That email address is already in use!');
+          Alert.alert('That email address is already in use!', 'If you did not create an account with that email, please click "Forgot password" ');
         }
         else if (error.code === 'auth/invalid-email') {
           Alert.alert('That email address is invalid!');
@@ -82,35 +119,54 @@ export default function SignUp() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TextInput
-      value={username}
-      onChangeText={setUsername}
-      style={styles.textInput}
-      placeholder='Username'
-      placeholderTextColor={'gray'}
-      />
-      <TextInput
-      value={email}
-      onChangeText={setEmail}
-      style={styles.textInput}
-      placeholder='Email address'
-      placeholderTextColor={'gray'}
-      />
-      <TextInput
-      value={password}
-      onChangeText={setPassword}
-      style={styles.textInput}
-      placeholder='Password'
-      placeholderTextColor={'gray'}
-      />
-      <View style={{flexDirection: 'row', marginVertical: 10}}>
-        <Button title='Sign up' onPress={()=>{signUp(username, email, password)}} />
-      </View>
-      <Pressable onPress={()=>{router.push('/sign-in')}}>
-        <Text style={{color: 'cornflowerblue'}} >Already have an account? Sign in here!</Text>
-      </Pressable>
-    </SafeAreaView>
+    <ImageBackground source={backgrounds.baseBG} style={{flex: 1, justifyContent: 'center'}}>
+      <SafeAreaView style={styles.container}>
+        <TextInput
+        value={username}
+        onChangeText={(text) => {
+          const clean = text.replace(/[^a-zA-Z0-9]/g, '');
+          setUsername(clean);
+        }}
+        style={textInputStyle}
+        placeholder='Username'
+        placeholderTextColor={'gray'}
+        maxLength={25}
+        autoCapitalize='none'
+        />
+        <TextInput
+        value={email.trim()}
+        onChangeText={setEmail}
+        style={textInputStyle}
+        placeholder='Email address'
+        placeholderTextColor={'gray'}
+        autoCapitalize='none'
+        />
+        <TextInput
+        value={password.trim()}
+        onChangeText={setPassword}
+        style={textInputStyle}
+        placeholder='Password'
+        placeholderTextColor={'gray'}
+        secureTextEntry={true}
+        autoCapitalize='none'
+        />
+        <TextInput
+        value={passwordRepeat.trim()}
+        onChangeText={setPasswordRepeat}
+        style={textInputStyle}
+        placeholder='Repeat password'
+        placeholderTextColor={'gray'}
+        secureTextEntry={true}
+        autoCapitalize='none'
+        />
+        <View style={{flexDirection: 'row', marginVertical: 10}}>
+          <Button title='Sign up' color={colors.orange} onPress={()=>{signUp()}} />
+        </View>
+        <Pressable onPress={()=>{router.push('/sign-in')}}>
+          <Text style={{color: colors.orange}} >Already have an account? Sign in here!</Text>
+        </Pressable>
+      </SafeAreaView>
+    </ImageBackground>
   )
 }
 
@@ -120,12 +176,5 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingTop: 100,
     alignItems: 'center'
-  },
-  textInput: {
-    width: '80%',
-    borderWidth: 1,
-    borderRadius: 10,
-    marginVertical: 10,
-    fontSize: 18
   }
 })
