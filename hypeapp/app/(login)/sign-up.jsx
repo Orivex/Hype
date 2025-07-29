@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert, ImageBackground, ActivityIndicator } from 'react-native';
+import { TextInput, Button, StyleSheet, View, Pressable, Text, Alert, ImageBackground, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDocs, getFirestore, query, setDoc, where } from '@react-native-firebase/firestore'
 import { getAuth, createUserWithEmailAndPassword, updateProfile } from '@react-native-firebase/auth';
@@ -7,6 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import backgrounds from '../helper/backgrounds';
 import textInputStyle from '../helper/textInputStyle';
 import colors from '../helper/colors';
+import deviceSizes from '../helper/deviceSizes';
+
+
+
+const deviceWidth = deviceSizes.deviceWidth;
+const deviceHeight = deviceSizes.deviceHeight;
 
 export default function SignUp() {
 
@@ -121,6 +127,7 @@ export default function SignUp() {
   return (
     <ImageBackground source={backgrounds.baseBG} style={{flex: 1, justifyContent: 'center'}}>
       <SafeAreaView style={styles.container}>
+        <Image source={require('@/assets/images/logo.png')} style={{width: deviceWidth/3, height: deviceHeight/6}}></Image>
         <TextInput
         value={username}
         onChangeText={(text) => {

@@ -29,7 +29,7 @@ export async function getServerTimeMillis (db) {
 }
 export function calculateTimeLeft(seconds, startAt) {
     const remaining = (seconds * 1000) - ( (Date.now() + serverTimeOffset) - startAt);
-    console.log(remaining);
+    //console.log(remaining);
     return Math.max(remaining, 0);
 }
 

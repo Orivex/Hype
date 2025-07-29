@@ -1,5 +1,4 @@
 import { Alert, Button, ImageBackground, Modal, StyleSheet, TextInput, View, Text, TouchableOpacity, ScrollView, Pressable } from "react-native";
-import DropdownComponent from "@/app/helper/DropdownComponent";
 import { collection, doc, getDoc, getFirestore, setDoc } from "@react-native-firebase/firestore";
 import { useRef, useState } from "react";
 import { getAuth } from "@react-native-firebase/auth";
@@ -9,10 +8,11 @@ import backgrounds from "@/app/helper/backgrounds";
 import { useUser } from "@/app/context/UserContext";
 import colors from "@/app/helper/colors";
 import deviceSizes from "@/app/helper/deviceSizes"
-import { mapCategory } from "@/app/helper/categories";
+import categories, { mapCategory } from "@/app/helper/categories";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useRouter } from "expo-router";
+import DropDownPicker from 'react-native-dropdown-picker'
 
 const deviceWidth = deviceSizes.deviceWidth;
 const deviceHeight = deviceSizes.deviceHeight;
@@ -50,7 +50,7 @@ export default function Create() {
                 expires_at: serverTime + minutes * 60 * 1000
             }
 
-            console.log(poll);
+            //console.log(poll);
             const docRef = doc(pollRef);
             await setDoc(docRef, poll);
 
@@ -69,6 +69,10 @@ export default function Create() {
 
     const [form, setForm] = useState(emptyForm);
     const [currentVisible, setCurrentVisible] = useState(0);
+
+    //Dropdown
+    const [open, setOpen] = useState(false);
+    const items = categories.map(item => ({label: item.label, value: item.value}))
 
     return(
         <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
@@ -93,11 +97,16 @@ export default function Create() {
                 {currentVisible == 1 && (
                     <View>
                         <Text style={styles.textStyle}>Select a category</Text>
-                        <DropdownComponent
+                        <DropDownPicker
+                            open={open}
                             value={form.category}
-                            onChange={(value) => setForm({ ...form, category: value })}
-                            style={styles.dropdown}
-                            />
+                            items={items}
+                            setOpen={setOpen}
+                            onChangeValue={(value) => setForm({...form, category: value})}
+                            placeholder="Select a category"
+                            listMode="SCROLLVIEW"
+                            //style={styles.dropdown}
+                        />
                     </View>
                 )}
 
@@ -268,35 +277,35 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontStyle: 'italic'
     },
-    dropdown: {
-        height: 50,
-        width: deviceWidth - 40,
-        borderRadius: 10,
-        borderColor: colors.orange,
-        borderWidth: 2,
-        marginVertical: 10,
-        paddingLeft: 10,
-
-        item: {
-            padding: 17,
-            flexDirection: 'row',
-            alignItems: 'center',
-        },
-        textItem: {
-            fontSize: 14,
-            color: 'gray',
-        },
-        placeholderStyle: {
-          fontSize: 20,
-          color: 'gray',
-        },
-        selectedTextStyle: {
-          fontSize: 20,
-          color: 'black',
-        },
-        inputSearchStyle: {
-          height: 40,
-          fontSize: 16,
-        },
-    },
+    //dropdown: {
+    //    height: 50,
+    //    width: deviceWidth - 40,
+    //    borderRadius: 10,
+    //    borderColor: colors.orange,
+    //    borderWidth: 2,
+    //    marginVertical: 10,
+    //    paddingLeft: 10,
+//
+    //    item: {
+    //        padding: 17,
+    //        flexDirection: 'row',
+    //        alignItems: 'center',
+    //    },
+    //    textItem: {
+    //        fontSize: 14,
+    //        color: 'gray',
+    //    },
+    //    placeholderStyle: {
+    //      fontSize: 20,
+    //      color: 'gray',
+    //    },
+    //    selectedTextStyle: {
+    //      fontSize: 20,
+    //      color: 'black',
+    //    },
+    //    inputSearchStyle: {
+    //      height: 40,
+    //      fontSize: 16,
+    //    },
+    //},
 })

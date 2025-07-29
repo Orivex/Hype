@@ -1,4 +1,4 @@
-import { ActivityIndicator, Alert, Button, ImageBackground, Pressable, StyleSheet, TouchableOpacity } from "react-native";
+import { ActivityIndicator, Alert, Button, Image, ImageBackground, Pressable, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import { getAuth, signOut } from '@react-native-firebase/auth';
 import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
@@ -11,6 +11,7 @@ import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
 import Entypo from '@expo/vector-icons/Entypo';
 import Feather from '@expo/vector-icons/Feather';
 import deviceSizes from "@/app/helper/deviceSizes";
+import Constants from 'expo-constants'
 
 const deviceWidth = deviceSizes.deviceWidth;
 const deviceHeight = deviceSizes.deviceHeight;
@@ -46,14 +47,15 @@ export default function Profile() {
   return(
     <ImageBackground source={backgrounds.baseBG} style={{flex: 1}}>
       <View style={styles.userInfoContainer}>
+        <Image source={require('@/assets/images/logo_transparent.png')} style={{width: deviceWidth/3, height: deviceHeight/6}}></Image>
         <Text style={styles.usernameText} adjustsFontSizeToFit numberOfLines={1} >{user.name}</Text>
         <Text style={styles.emailText} adjustsFontSizeToFit numberOfLines={1} >{user.email}</Text>
       </View>
+      <ScrollView style={styles.menuContainer} contentContainerStyle={{justifyContent: 'center', alignItems: 'center'}}>
       <View style={styles.hypeScoreContainer}>
         <Text style={styles.hypeScoreTextText} >Hype score</Text>
         <Text style={styles.hypeScoreText} adjustsFontSizeToFit numberOfLines={1}>🔥{hypeScore}🔥</Text>
       </View>
-      <View style={styles.menuContainer}>
         {menuElement('My polls', <Entypo name="gauge" size={deviceWidth/12} color={colors.red1} />, ()=>{
           router.push({
             pathname: '/(pollView)',
@@ -100,9 +102,9 @@ export default function Profile() {
               onPress: () => signOut(getAuth()).then(()=>{router.replace('/(login)')})
             }
           ])
-;
           })}
-      </View>
+          <Text>Version {Constants.expoConfig.version}</Text>
+      </ScrollView>
     </ImageBackground>
   )
 }
@@ -112,7 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.orange,
-    paddingTop: 100,
+    paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 10
   },
@@ -130,7 +132,7 @@ const styles = StyleSheet.create({
     borderColor: colors.red1
   },
   menuContainer: {
-    marginTop: 10,
+    marginBottom: 10,
    // backgroundColor: 'white',
   },
   menuElement: {

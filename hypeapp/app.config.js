@@ -1,10 +1,10 @@
 export default {
     expo: {
-        name: "hype-app",
+        name: "Hype",
         slug: "hype-app",
         version: "1.0.0",
         orientation: "portrait",
-        icon: "./assets/images/icon.png",
+        icon: "./assets/images/adaptive-icon.png",
         scheme: "hype-app",
         userInterfaceStyle: "automatic",
         newArchEnabled: true,
@@ -15,7 +15,7 @@ export default {
           googleServicesFile: process.env.GOOGLE_SERVICES_JSON,
           adaptiveIcon: {
             foregroundImage: "./assets/images/adaptive-icon.png",
-            backgroundColor: "#ffffff"
+            //backgroundColor: "#ffffff"
           },
           edgeToEdgeEnabled: true,
           package: "com.blacklight101.hypeapp"
@@ -36,10 +36,11 @@ export default {
               image: "./assets/images/splash-icon.png",
               imageWidth: 200,
               resizeMode: "contain",
-              backgroundColor: "#ffffff"
+              backgroundColor: "rgb(252, 239, 145)"
             }
           ],
           "expo-web-browser",
+          "expo-build-properties"
         ],
         experiments: {
           typedRoutes: true
@@ -50,6 +51,12 @@ export default {
             projectId: "909ddc05-a748-4073-9d18-0693a2d21411"
           }
         },
-        owner: "blacklight101"
+        owner: "blacklight101",
+        updates: {
+          url: "https://u.expo.dev/909ddc05-a748-4073-9d18-0693a2d21411"
+        },
+        runtimeVersion: {
+          policy: "appVersion"
+        }
         }
 };

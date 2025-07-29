@@ -50,12 +50,12 @@ export default function Vote() {
         return unsub;
     }
 
-    const gainHype = async (name) => {
+    const gainHype = async (name, score) => {
         try {
             const docSnap = await getDocs(query(userRef, where('name', '==', name)));
             if(docSnap.docs.length > 0) {
                 const docRef = docSnap.docs[0].ref;
-                await updateDoc(docRef, {hype_score: increment(1)});
+                await updateDoc(docRef, {hype_score: increment(score)});
             }
         }
         catch(e) {
@@ -85,11 +85,11 @@ export default function Vote() {
             if(docSnap.exists()) {
                 const data = docSnap.data();
                 if((data.left_votes + data.right_votes) % 1 == 0) { // Every vote => one point (will be changed in release)
-                    gainHype(poll.username); // Give it to the guy who posted the poll
+                    gainHype(poll.username, 2); // Give it to the guy who posted the poll
                 }
             }
 
-            gainHype(user.displayName); 
+            gainHype(user.displayName, 1); 
         }
         catch(e){
             const msg = 'Something went wrong when voting: ';

@@ -90,13 +90,12 @@ import Feather from '@expo/vector-icons/Feather';
       try {
         let q;
         const last30min = (await getServerTimeMillis(db)) - 1800000;
-        // Sadly won't work with the where-claused in saved_polls or voted_polls
 
         q = query(pollRef, 
           orderBy('start_at', 'desc'),
           where('start_at', '>=', last30min),
           orderBy('total_votes', 'desc'),
-          where('total_votes', '>=', 1),
+          where('total_votes', '>=', 14),
           limit(10));
 
         q = await checkAdditionalQuery(q);
@@ -233,7 +232,7 @@ import Feather from '@expo/vector-icons/Feather';
 
     const fetchNewPolls = async (isRefresh) => {
       try {
-          console.log("New polls loading");
+          //console.log("New polls loading");
           let docs = [];
 
           if(isRefresh || filterChanged.current) {
@@ -260,7 +259,7 @@ import Feather from '@expo/vector-icons/Feather';
 
           if(docs.length == 0) {
               setAllPollsLoaded(true);
-              console.log("No more polls to load (fetchNewestPolls)");
+              //console.log("No more polls to load (fetchNewestPolls)");
           }
 
           if(isSavedPolls == 'true' || isVotedPolls == 'true') {
@@ -329,11 +328,11 @@ import Feather from '@expo/vector-icons/Feather';
     const onRefresh = React.useCallback(async () => {
 
       if(isLoadingPolls.current || isRefreshing) {
-        console.log("Refresh not possible now");
+        //console.log("Refresh not possible now");
         return;
       }
 
-      console.log("Reloading because refreshing");
+      //console.log("Reloading because refreshing");
 
       flatListRef.current.scrollToOffset({ offset: 0, animated: true });
       setIsRefreshing(true);
@@ -346,7 +345,7 @@ import Feather from '@expo/vector-icons/Feather';
     const onEndReached = async () => {
 
       if(isLoadingPolls.current || isRefreshing) {
-        console.log("OnEndReached() not possible now");
+        //console.log("OnEndReached() not possible now");
         return;
       }
       
@@ -354,7 +353,7 @@ import Feather from '@expo/vector-icons/Feather';
         //if(polls.length >= 20) {
           //  setPolls([]);
           //}
-        console.log("Reloading because end reached");
+        //console.log("Reloading because end reached");
         isLoadingPolls.current = true;
         await fetchNewPolls(false); 
       }
@@ -427,7 +426,7 @@ import Feather from '@expo/vector-icons/Feather';
           decelerationRate={0.1}
           ListFooterComponent={
             <Button title={allPollsLoaded ? "Refresh page": "Load more"} onPress={async ()=>{
-              console.log("Load more Button triggered"); 
+              //console.log("Load more Button triggered"); 
               if(allPollsLoaded) {
                 await onRefresh();
               }
