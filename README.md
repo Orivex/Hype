@@ -1,3 +1,7 @@
+Hype is a place where you can post polls and other users can vote in a limited time. It's basically an ANDROID APP to get opinions/feelings about recent events or events that are currently happening (Sports, Politics, Tech world....)
+
+Tech stack: React Native, Expo, Firebase
+
 # INSTALLATION GUIDE (VERY EASY)
 
 ### Step 1
