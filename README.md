@@ -2,6 +2,8 @@ Hype is a place where you can post polls and other users can vote in a limited t
 
 Tech stack: React Native, Expo, Firebase
 
+Made for "Summer of Making" by Hackclub
+
 # INSTALLATION GUIDE (VERY EASY)
 
 ### Step 1
