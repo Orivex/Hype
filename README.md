@@ -7,7 +7,7 @@ Made for "Summer of Making" by Hackclub
 # INSTALLATION GUIDE (VERY EASY)
 
 ### Step 1
-Download the apk file "hype.apk" on your ANDROID device
+Download the apk file "hype.apk" on your ANDROID device (see releases on the right window)
 
 ### Step 2
 Open the apk file and install
